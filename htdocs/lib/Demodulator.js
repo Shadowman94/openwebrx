@@ -13,6 +13,8 @@ Filter.prototype.getLimits = function() {
         max_bw = 24000;
     } else if (this.demodulator.get_modulation() === 'wfm') {
         max_bw = 100000;
+    } else if (this.demodulator.get_modulation() === 'bcfm') {
+        max_bw = 192000;
     } else if (this.demodulator.get_modulation() === 'drm') {
         max_bw = 50000;
     } else if (this.demodulator.get_modulation() === "freedv") {

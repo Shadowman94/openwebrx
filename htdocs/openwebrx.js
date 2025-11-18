@@ -1155,6 +1155,10 @@ function on_ws_recv(evt) {
                 // hd audio data
                 audioEngine.pushHdAudio(data);
                 break;
+            case 5:
+                // st audio data
+                audioEngine.pushStAudio(data);
+                break;
             default:
                 console.warn('unknown type of binary message: ' + type)
         }
@@ -1178,7 +1182,8 @@ function on_ws_opened() {
         "type": "connectionproperties",
         "params": {
             "output_rate": audioEngine.getOutputRate(),
-            "hd_output_rate": audioEngine.getHdOutputRate()
+            "hd_output_rate": audioEngine.getHdOutputRate(),
+            "st_output_rate": audioEngine.getStOutputRate()
         }
     }));
 }
