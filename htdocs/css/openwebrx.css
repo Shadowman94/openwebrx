@@ -1729,7 +1729,7 @@ img.openwebrx-mirror-img
     flex: 0 0 auto;
 }
 
-#openwebrx-panel-metadata-wfm {
+#openwebrx-panel-metadata-wfm, #openwebrx-panel-metadata-bcfm {
 	width: 350px;
 	max-height: 300px;
 	padding: 10px 10px 10px 10px;

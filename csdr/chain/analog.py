@@ -149,7 +149,7 @@ class BCFm(BaseDemodulatorChain, FixedIfSampleRateChain, StAudio, MetaProvider):
         if sampleRate == self.sampleRate:
             return
         self.sampleRate = sampleRate
-        self.replace(1, StereoFractionalDecimator(Format.FLOAT, self.StereoMPXRate, self.StereoMPXRate / self.sampleRate, numPolyPoints=self.DecimPolyPoints, prefilter=False))
+        #self.replace(1, StereoFractionalDecimator(Format.FLOAT, self.StereoMPXRate, self.StereoMPXRate / self.sampleRate, numPolyPoints=self.DecimPolyPoints, prefilter=False))
 
     def setMetaWriter(self, writer: Writer) -> None:
         if not FeatureDetector().is_available("rds"):
@@ -171,7 +171,7 @@ class BCFm(BaseDemodulatorChain, FixedIfSampleRateChain, StAudio, MetaProvider):
         self.rdsRbds = rdsRbds
         if self.metaChain is not None:
             self.metaChain.stop()
-            self.metaChain = Redsea(self.getFixedIfSampleRate(), self.rdsRbds)
+            self.metaChain = RdsDemodulator(self.getFixedIfSampleRate(), self.rdsRbds)
             self.metaChain.setReader(self.metaTapBuffer.getReader())
             self.metaChain.setWriter(self.metaWriter)
 

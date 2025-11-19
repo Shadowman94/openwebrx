@@ -1033,6 +1033,9 @@ function on_ws_recv(evt) {
                         $('#openwebrx-panel-metadata-wfm').metaPanel().each(function() {
                             this.setEnabled(!!json.value.rds);
                         });
+                        $('#openwebrx-panel-metadata-bcfm').metaPanel().each(function() {
+                            this.setEnabled(!!json.value.rds);
+                        });
                         break;
                     case "metadata":
                         $('.openwebrx-meta-panel').metaPanel().each(function(){
