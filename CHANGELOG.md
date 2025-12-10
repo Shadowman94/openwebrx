@@ -1,3 +1,23 @@
+**1.2.101**
+- Fixed bandwidth allocation for services.
+- Added callsign spotter to CW/RTTY skimmers.
+- Added more checks to callsign-to-country conversion.
+- Added MQTT events for downloading data from the web.
+- Added timestamps to chat messages.
+- Enabled CW/RTTY skimmers as background services.
+- Extended CW/RTTY skimmer bandwidth to 96ksps.
+- Removed NOAA-15 and NOAA-19 satellite decoders.
+
+**1.2.100**
+- Added option to chat between OWRX+ servers via MQTT.
+- Added option to relay WSJT spots between OWRX+ servers.
+- Added option to relay APRS/AIS data between OWRX+ servers.
+- Added option to relay aircraft data between OWRX+ servers.
+- Added number of connected clients to CLIENT MQTT reports.
+- Added options to disable RX and CLIENT MQTT reports.
+- Fixed MQTT code to work with Paho MQTT 2.x.
+- Fixed some maps not wrapping properly.
+
 **1.2.99**
 - Fixing RTLSDR issues caused by 'dump978-fa'.
 - Switched to 'dump978-fa-minimal' package.
