@@ -63,6 +63,10 @@ class DecodingSettingsController(SettingsFormController):
                     "dsc_show_errors",
                     "Show partial messages when decoding DSC",
                 ),
+                CheckboxInput(
+                    "ism_report_levels",
+                    "Report ISM signal levels (RSSI/SNR)",
+                ),
             ),
             Section(
                 "Digital voice",

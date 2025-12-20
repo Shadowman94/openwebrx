@@ -1,7 +1,13 @@
 **1.2.102**
-- Improved HAM callsigns verification.
-- Enabled RTTY skimmer to send to PskReporter.
+- Added MSK144 to WSJT modes received over MQTT.
+- Added ISM signal level reporting [Ryan Jacobs].
+- Added 27700kHz SSTV frequency to all bandplans.
+- Fixed MQTT initialization order [Jan Loewe].
 - Fixed background digital mode instantiation.
+- Enabled RTTY skimmer to send to PskReporter.
+- Extended CB band to 28MHz in all bandplans.
+- Removed NOAA satellites from the bandplans.
+- Improved HAM callsigns verification.
 
 **1.2.101**
 - Fixed bandwidth allocation for services.
