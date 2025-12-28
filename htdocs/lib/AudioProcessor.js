@@ -1,6 +1,7 @@
 class OwrxAudioProcessor extends AudioWorkletProcessor {
     constructor(options){
         super(options);
+        this.channelCount = options.outputChannelCount;
         // initialize ringbuffer, make sure it aligns with the expected buffer size of 128
         this.bufferSize = Math.round(options.processorOptions.maxBufferSize / 128) * 128;
         this.audioBuffer = new Float32Array(this.bufferSize);
@@ -33,16 +34,39 @@ class OwrxAudioProcessor extends AudioWorkletProcessor {
         this.port.start();
     }
     process(inputs, outputs) {
-        if (this.remaining() < 128) {
-            outputs[0].forEach(output => output.fill(0));
+        if(this.channelCount == 2)
+        {
+            const output = outputs[0];
+            const numFrames = 128; // fix buffer frame
+
+            if (this.remaining() < numFrames * 2) { // 2 channels
+                output.forEach(ch => ch.fill(0));
+                return true;
+            }
+
+            const inBuf = this.audioBuffer.subarray(this.outPos, this.outPos + numFrames * 2);
+
+            for (let i = 0; i < numFrames; i++) {
+                output[0][i] = inBuf[2*i];     // left
+                output[1][i] = inBuf[2*i + 1]; // right
+            }
+
+            this.outPos = (this.outPos + numFrames * 2) % this.bufferSize;
+            this.samplesProcessed += numFrames;
+
+            return true;
+        } else {
+            if (this.remaining() < 128) {
+                outputs[0].forEach(output => output.fill(0));
+                return true;
+            }
+            outputs[0].forEach((output) => {
+                output.set(this.audioBuffer.subarray(this.outPos, this.outPos + 128));
+            });
+            this.outPos = (this.outPos + 128) % this.bufferSize;
+            this.samplesProcessed += 128;
             return true;
         }
-        outputs[0].forEach((output) => {
-            output.set(this.audioBuffer.subarray(this.outPos, this.outPos + 128));
-        });
-        this.outPos = (this.outPos + 128) % this.bufferSize;
-        this.samplesProcessed += 128;
-        return true;
     }
     remaining() {
         const mod = (this.inPos - this.outPos) % this.bufferSize;

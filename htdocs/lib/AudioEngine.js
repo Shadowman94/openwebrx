@@ -109,7 +109,7 @@ AudioEngine.prototype._start = function() {
             me.audioNode = new AudioWorkletNode(me.audioContext, 'openwebrx-audio-processor', {
                 numberOfInputs: 0,
                 numberOfOutputs: 1,
-                outputChannelCount: [1],
+                outputChannelCount: [me.getChannelCount()],
                 processorOptions: {
                     maxBufferSize: me.maxBufferSize
                 }
@@ -247,6 +247,157 @@ AudioEngine.prototype.isAllowed = function() {
 
 AudioEngine.prototype.isStarted = function() {
     return this.started;
+};
+
+AudioEngine.prototype.restartAudioNode = function() {
+    var me = this;
+    
+    if (!me.started || !me.audioNode) {
+        return;
+    }
+    
+    // Disconnect and clean up old node
+    if (me.audioNode.port) {
+        // AudioWorklet - disconnect and let it be garbage collected
+        me.audioNode.disconnect();
+        me.audioNode = null;
+    } else {
+        // ScriptProcessorNode - disconnect and clean up
+        me.audioNode.disconnect();
+        me.audioNode = null;
+        // Clear audio buffers to avoid playing old data
+        if (me.audioBuffers) {
+            me.audioBuffers = [];
+        }
+    }
+    
+    // Recreate the audio node with new channel count
+    if (useAudioWorklets && me.audioContext.audioWorklet) {
+        me.audioContext.audioWorklet.addModule('static/lib/AudioProcessor.js').then(function(){
+            me.audioNode = new AudioWorkletNode(me.audioContext, 'openwebrx-audio-processor', {
+                numberOfInputs: 0,
+                numberOfOutputs: 1,
+                outputChannelCount: [me.getChannelCount()],
+                processorOptions: {
+                    maxBufferSize: me.maxBufferSize
+                }
+            });
+            me.audioNode.connect(me.gainNode);
+            me.audioNode.port.addEventListener('message', function(m){
+                var json = JSON.parse(m.data);
+                if (typeof(json.buffersize) !== 'undefined') {
+                    me.audioReporter({
+                        buffersize: json.buffersize
+                    });
+                }
+                if (typeof(json.samplesProcessed) !== 'undefined') {
+                    me.audioSamples.add(json.samplesProcessed);
+                }
+            });
+            me.audioNode.port.start();
+        });
+    } else {
+        me.audioBuffers = [];
+        
+        // Calculate initial buffer size based on channel count and sample rate
+        var bufferSize;
+        if (me.getChannelCount() == 2) {
+            bufferSize = 4096 * 2;
+        } else {
+            if (me.audioContext.sampleRate < 44100 * 2)
+                bufferSize = 4096;
+            else if (me.audioContext.sampleRate >= 44100 * 2 && me.audioContext.sampleRate < 44100 * 4)
+                bufferSize = 4096 * 2;
+            else if (me.audioContext.sampleRate > 44100 * 4)
+                bufferSize = 4096 * 4;
+        }
+        
+        function audio_onprocess(e) {
+            var total = 0;
+            
+            if(me.getChannelCount() == 2)
+            {
+                var numSamples = 0;
+                bufferSize = 4096 * 2;
+                // Size arrays based on output buffer requirements
+                var outputFrames = e.outputBuffer.length
+                var left  = new Float32Array(outputFrames);
+                var right = new Float32Array(outputFrames);
+                
+                var out = new Float32Array(bufferSize); // interleaved
+                
+                while (me.audioBuffers.length) {
+                    var b = me.audioBuffers.shift();
+                    // not enough space to fit all data, so splice and put back in the queue
+                    if (numSamples + b.length > bufferSize) {
+                        var spaceLeft  = bufferSize - numSamples;
+                        var tokeep = b.subarray(0, spaceLeft);
+                        out.set(tokeep, numSamples);
+                        var tobuffer = b.subarray(spaceLeft, b.length);
+                        me.audioBuffers.unshift(tobuffer);
+                        numSamples += spaceLeft;
+                        break;
+                    } else {
+                        out.set(b, numSamples);
+                        numSamples += b.length;
+                    }
+                }
+                
+                // Fill available audio data
+                for (var i = 0; i < outputFrames; i++) {
+                    left[i]  = out[i * 2];
+                    right[i] = out[i * 2 + 1];
+                }
+                
+                //fill the entire expected buffer
+                e.outputBuffer.copyToChannel(left, 0);
+                e.outputBuffer.copyToChannel(right, 1);
+                
+                me.audioSamples.add(outputFrames);
+            }
+            else
+            {
+                if (me.audioContext.sampleRate < 44100 * 2)
+                    bufferSize = 4096;
+                else if (me.audioContext.sampleRate >= 44100 * 2 && me.audioContext.sampleRate < 44100 * 4)
+                    bufferSize = 4096 * 2;
+                else if (me.audioContext.sampleRate > 44100 * 4)
+                    bufferSize = 4096 * 4;
+                
+                var out = new Float32Array(bufferSize);
+                while (me.audioBuffers.length) {
+                    var b = me.audioBuffers.shift();
+                    // not enough space to fit all data, so splice and put back in the queue
+                    if (total + b.length > bufferSize) {
+                        var spaceLeft  = bufferSize - total;
+                        var tokeep = b.subarray(0, spaceLeft);
+                        out.set(tokeep, total);
+                        var tobuffer = b.subarray(spaceLeft, b.length);
+                        me.audioBuffers.unshift(tobuffer);
+                        total += spaceLeft;
+                        break;
+                    } else {
+                        out.set(b, total);
+                        total += b.length;
+                    }
+                }
+                
+                e.outputBuffer.copyToChannel(out, 0);
+                e.outputBuffer.copyToChannel(out, 1);
+                me.audioSamples.add(total);
+            }
+        }
+        
+        //on Chrome v36, createJavaScriptNode has been replaced by createScriptProcessor
+        var method = 'createScriptProcessor';
+        if (me.audioContext.createJavaScriptNode) {
+            method = 'createJavaScriptNode';
+        }
+        
+        me.audioNode = me.audioContext[method](bufferSize, 0, 2);
+        me.audioNode.onaudioprocess = audio_onprocess;
+        me.audioNode.connect(me.gainNode);
+    }
 };
 
 AudioEngine.prototype.reportStats = function() {
@@ -406,6 +557,11 @@ AudioEngine.prototype.processStAudio = function(data, resampler, recorder) {
 }
 
 AudioEngine.prototype.pushAudio = function(data) {
+    // Check if channel count changed and restart audio node if needed
+    if (this.channelCount !== 1 && this.started) {
+        this.channelCount = 1;
+        this.restartAudioNode();
+    }
     this.processAudio(data, this.resampler, this.recorder);
     this.lastHd = false;
     this.lastSt = false;
@@ -413,6 +569,11 @@ AudioEngine.prototype.pushAudio = function(data) {
 };
 
 AudioEngine.prototype.pushHdAudio = function(data) {
+    // Check if channel count changed and restart audio node if needed
+    if (this.channelCount !== 1 && this.started) {
+        this.channelCount = 1;
+        this.restartAudioNode();
+    }
     this.processAudio(data, this.hdResampler, this.hdRecorder);
     this.lastHd = true;
     this.lastSt = false;
@@ -420,6 +581,11 @@ AudioEngine.prototype.pushHdAudio = function(data) {
 }
 
 AudioEngine.prototype.pushStAudio = function(data) {
+    // Check if channel count changed and restart audio node if needed
+    if (this.channelCount !== 2 && this.started) {
+        this.channelCount = 2;
+        this.restartAudioNode();
+    }
     this.processStAudio(data, this.stResampler, this.stRecorder);
     this.lastHd = false;
     this.lastSt = true;
