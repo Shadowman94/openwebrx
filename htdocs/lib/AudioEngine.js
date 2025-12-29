@@ -140,49 +140,70 @@ AudioEngine.prototype._start = function() {
             }
         }
 
+        // Calculate initial buffer size based on channel count and sample rate
         var bufferSize;
+        if (me.getChannelCount() == 2) {
+            bufferSize = 4096 * 2;
+        } else {
+            if (me.audioContext.sampleRate < 44100 * 2)
+                bufferSize = 4096;
+            else if (me.audioContext.sampleRate >= 44100 * 2 && me.audioContext.sampleRate < 44100 * 4)
+                bufferSize = 4096 * 2;
+            else if (me.audioContext.sampleRate > 44100 * 4)
+                bufferSize = 4096 * 4;
+        }
 
         function audio_onprocess(e) {
             var total = 0;
 
             if(me.getChannelCount() == 2)
             {
-                var numSamples = 0;
-                bufferSize = 4096 * 2;
                 // Size arrays based on output buffer requirements
-                var outputFrames = e.outputBuffer.length
+                var outputFrames = e.outputBuffer.length;
                 var left  = new Float32Array(outputFrames);
                 var right = new Float32Array(outputFrames);
-
-                var out = new Float32Array(bufferSize); // interleaved
-
-                while (me.audioBuffers.length) {
+                
+                // Size the interleaved buffer to exactly what we need
+                var neededSamples = outputFrames * 2; // interleaved stereo
+                var out = new Float32Array(neededSamples);
+                var numSamples = 0;
+                
+                // Fill the output buffer from audioBuffers
+                while (me.audioBuffers.length && numSamples < neededSamples) {
                     var b = me.audioBuffers.shift();
-                    // not enough space to fit all data, so splice and put back in the queue
-                    if (numSamples + b.length > bufferSize) {
-                        var spaceLeft  = bufferSize - numSamples;
+                    var spaceLeft = neededSamples - numSamples;
+                    
+                    if (b.length <= spaceLeft) {
+                        // Buffer fits completely
+                        out.set(b, numSamples);
+                        numSamples += b.length;
+                    } else {
+                        // Buffer is too large, take what we need and put rest back
                         var tokeep = b.subarray(0, spaceLeft);
                         out.set(tokeep, numSamples);
                         var tobuffer = b.subarray(spaceLeft, b.length);
                         me.audioBuffers.unshift(tobuffer);
-                        numSamples += spaceLeft;
+                        numSamples = neededSamples;
                         break;
-                    } else {
-                        out.set(b, numSamples);
-                        numSamples += b.length;
                     }
                 }
                 
-                // Fill available audio data
+                // De-interleave and fill output channels
                 for (var i = 0; i < outputFrames; i++) {
-                    left[i]  = out[i * 2];
-                    right[i] = out[i * 2 + 1];
+                    if (i * 2 + 1 < numSamples) {
+                        left[i]  = out[i * 2];
+                        right[i] = out[i * 2 + 1];
+                    } else {
+                        // Fill with zeros if not enough data
+                        left[i] = 0;
+                        right[i] = 0;
+                    }
                 }
-
-                //fill the entire expected buffer
+                
+                // Fill the entire expected buffer
                 e.outputBuffer.copyToChannel(left, 0);
                 e.outputBuffer.copyToChannel(right, 1);
-
+                
                 me.audioSamples.add(outputFrames);
             }
             else
@@ -256,6 +277,11 @@ AudioEngine.prototype.restartAudioNode = function() {
         return;
     }
     
+    var runCallbacks = function(workletType) {
+        // On restart, we don't need to run start callbacks again
+        // but we keep the structure for consistency
+    };
+    
     // Disconnect and clean up old node
     if (me.audioNode.port) {
         // AudioWorklet - disconnect and let it be garbage collected
@@ -295,6 +321,7 @@ AudioEngine.prototype.restartAudioNode = function() {
                 }
             });
             me.audioNode.port.start();
+            runCallbacks('AudioWorklet');
         });
     } else {
         me.audioBuffers = [];
@@ -317,39 +344,49 @@ AudioEngine.prototype.restartAudioNode = function() {
             
             if(me.getChannelCount() == 2)
             {
-                var numSamples = 0;
-                bufferSize = 4096 * 2;
                 // Size arrays based on output buffer requirements
-                var outputFrames = e.outputBuffer.length
+                var outputFrames = e.outputBuffer.length;
                 var left  = new Float32Array(outputFrames);
                 var right = new Float32Array(outputFrames);
                 
-                var out = new Float32Array(bufferSize); // interleaved
+                // Size the interleaved buffer to exactly what we need
+                var neededSamples = outputFrames * 2; // interleaved stereo
+                var out = new Float32Array(neededSamples);
+                var numSamples = 0;
                 
-                while (me.audioBuffers.length) {
+                // Fill the output buffer from audioBuffers
+                while (me.audioBuffers.length && numSamples < neededSamples) {
                     var b = me.audioBuffers.shift();
-                    // not enough space to fit all data, so splice and put back in the queue
-                    if (numSamples + b.length > bufferSize) {
-                        var spaceLeft  = bufferSize - numSamples;
+                    var spaceLeft = neededSamples - numSamples;
+                    
+                    if (b.length <= spaceLeft) {
+                        // Buffer fits completely
+                        out.set(b, numSamples);
+                        numSamples += b.length;
+                    } else {
+                        // Buffer is too large, take what we need and put rest back
                         var tokeep = b.subarray(0, spaceLeft);
                         out.set(tokeep, numSamples);
                         var tobuffer = b.subarray(spaceLeft, b.length);
                         me.audioBuffers.unshift(tobuffer);
-                        numSamples += spaceLeft;
+                        numSamples = neededSamples;
                         break;
-                    } else {
-                        out.set(b, numSamples);
-                        numSamples += b.length;
                     }
                 }
                 
-                // Fill available audio data
+                // De-interleave and fill output channels
                 for (var i = 0; i < outputFrames; i++) {
-                    left[i]  = out[i * 2];
-                    right[i] = out[i * 2 + 1];
+                    if (i * 2 + 1 < numSamples) {
+                        left[i]  = out[i * 2];
+                        right[i] = out[i * 2 + 1];
+                    } else {
+                        // Fill with zeros if not enough data
+                        left[i] = 0;
+                        right[i] = 0;
+                    }
                 }
                 
-                //fill the entire expected buffer
+                // Fill the entire expected buffer
                 e.outputBuffer.copyToChannel(left, 0);
                 e.outputBuffer.copyToChannel(right, 1);
                 
@@ -397,6 +434,7 @@ AudioEngine.prototype.restartAudioNode = function() {
         me.audioNode = me.audioContext[method](bufferSize, 0, 2);
         me.audioNode.onaudioprocess = audio_onprocess;
         me.audioNode.connect(me.gainNode);
+        runCallbacks('ScriptProcessorNode');
     }
 };
 
