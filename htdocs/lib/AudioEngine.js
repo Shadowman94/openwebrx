@@ -685,9 +685,22 @@ function AudioRecorder(sampleRate, kbps, channelCount) {
 
 AudioRecorder.prototype.record = function(samples) {
     if(this.channelCount == 2) {
-        for (var i = 0; i < samples.length; i += this.blockSize) {
-            var leftChunk  = samples.subarray(i * 2, (i) + this.blockSize);
-            var rightChunk  = samples.subarray(i * 2 + 1, (i) + this.blockSize);
+        // samples is interleaved stereo: [L0, R0, L1, R1, L2, R2, ...]
+        // Process in chunks of blockSize frames (blockSize * 2 interleaved samples)
+        for (var i = 0; i < samples.length; i += this.blockSize * 2) {
+            var chunkSize = Math.min(this.blockSize * 2, samples.length - i);
+            var interleavedChunk = samples.subarray(i, i + chunkSize);
+            var numFrames = chunkSize / 2;
+            
+            // De-interleave into separate left and right channels
+            var leftChunk = new Int16Array(numFrames);
+            var rightChunk = new Int16Array(numFrames);
+            
+            for (var j = 0; j < numFrames; j++) {
+                leftChunk[j] = interleavedChunk[j * 2];
+                rightChunk[j] = interleavedChunk[j * 2 + 1];
+            }
+            
             var mp3buf = this.mp3encoder.encodeBuffer(leftChunk, rightChunk);
             if (mp3buf.length > 0) this.mp3Data.push(mp3buf);
         }
