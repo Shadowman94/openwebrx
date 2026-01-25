@@ -107,10 +107,10 @@ class WFm(BaseDemodulatorChain, FixedIfSampleRateChain, DeemphasisTauChain, HdAu
 
 
 class BCFm(BaseDemodulatorChain, FixedIfSampleRateChain, StAudio, MetaProvider):
-    def __init__(self, tau: float, rdsRbds: bool, sampleRate: int, outputRate: int, outputChannels: int = 2):
+    def __init__(self, sampleRate: int, tau: float, rdsRbds: bool):
         self.sampleRate = sampleRate
-        self.outputRate = outputRate
         self.StereoMPXRate = 192000
+        self.outputRate = self.StereoMPXRate
         self.DecimPolyPoints = 12
         self.tau = tau
         self.rdsRbds = rdsRbds
@@ -120,7 +120,7 @@ class BCFm(BaseDemodulatorChain, FixedIfSampleRateChain, StAudio, MetaProvider):
         workers = [
             BCFmDemod(),
             self.limit,
-            StereoFractionalDecimator(Format.FLOAT, self.StereoMPXRate, self.StereoMPXRate / self.sampleRate, numPolyPoints=self.DecimPolyPoints, prefilter=False),
+            StereoFractionalDecimator(Format.FLOAT, self.StereoMPXRate, self.StereoMPXRate / self.sampleRate, self.tau, numPolyPoints=self.DecimPolyPoints, prefilter=False),
         ]
         self.metaChain = None
         self.metaWriter = None
@@ -144,12 +144,13 @@ class BCFm(BaseDemodulatorChain, FixedIfSampleRateChain, StAudio, MetaProvider):
         if tau == self.tau:
             return
         self.tau = tau
+        self.replace(2, StereoFractionalDecimator(Format.FLOAT, self.StereoMPXRate, self.StereoMPXRate / self.sampleRate, self.tau, numPolyPoints=self.DecimPolyPoints, prefilter=False))
 
     def setSampleRate(self, sampleRate: int) -> None:
         if sampleRate == self.sampleRate:
             return
         self.sampleRate = sampleRate
-        #self.replace(1, StereoFractionalDecimator(Format.FLOAT, self.StereoMPXRate, self.StereoMPXRate / self.sampleRate, numPolyPoints=self.DecimPolyPoints, prefilter=False))
+        self.replace(2, StereoFractionalDecimator(Format.FLOAT, self.StereoMPXRate, self.StereoMPXRate / self.sampleRate, self.tau, numPolyPoints=self.DecimPolyPoints, prefilter=False))
 
     def setMetaWriter(self, writer: Writer) -> None:
         if not FeatureDetector().is_available("rds"):

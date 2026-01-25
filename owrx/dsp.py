@@ -37,12 +37,11 @@ class ClientDemodulatorSecondaryDspEventClient(ABC):
 
 
 class ClientDemodulatorChain(Chain):
-    def __init__(self, demod: BaseDemodulatorChain, sampleRate: int, outputRate: int, hdOutputRate: int, stOutputRate: int, stOutputChannels: int, audioCompression: str, nrEnabled: bool, nrThreshold: int, secondaryDspEventReceiver: ClientDemodulatorSecondaryDspEventClient):
+    def __init__(self, demod: BaseDemodulatorChain, sampleRate: int, outputRate: int, hdOutputRate: int, stOutputRate: int, audioCompression: str, nrEnabled: bool, nrThreshold: int, secondaryDspEventReceiver: ClientDemodulatorSecondaryDspEventClient):
         self.sampleRate = sampleRate
         self.outputRate = outputRate
         self.hdOutputRate = hdOutputRate
         self.stOutputRate = stOutputRate
-        self.stOutputChannels = stOutputChannels
         self.nrEnabled = nrEnabled
         self.nrThreshold = nrThreshold
         self.secondaryDspEventReceiver = secondaryDspEventReceiver
@@ -332,12 +331,6 @@ class ClientDemodulatorChain(Chain):
             return
         self._updateDemodulatorOutputRate(outputRate)
 
-    def setStOutputChannels(self, outputChannels) -> None:
-        if outputChannels == self.stOutputChannels:
-            return
-
-        self.stOutputChannels = outputChannels
-        
     #STEREO MOD
 
     def _updateDemodulatorOutputRate(self, outputRate):
@@ -487,7 +480,6 @@ class DspManager(SdrSourceEventClient, ClientDemodulatorSecondaryDspEventClient)
             "output_rate": "int",
             "hd_output_rate": "int",
             "st_output_rate": "int",
-            "st_output_channels": "int",
             "squelch_level": "num",
             "secondary_mod": ModulationValidator(),
             "low_cut": "num",
@@ -530,7 +522,6 @@ class DspManager(SdrSourceEventClient, ClientDemodulatorSecondaryDspEventClient)
                 output_rate=12000,
                 hd_output_rate=48000,
                 st_output_rate=48000,
-                st_output_channels=2,
                 digital_voice_codecserver="",
                 nr_enabled=False,
                 nr_threshold=0
@@ -543,7 +534,6 @@ class DspManager(SdrSourceEventClient, ClientDemodulatorSecondaryDspEventClient)
             self.props["output_rate"],
             self.props["hd_output_rate"],
             self.props["st_output_rate"],
-            self.props["st_output_channels"],
             self.props["audio_compression"],
             self.props["nr_enabled"],
             self.props["nr_threshold"],
@@ -584,7 +574,6 @@ class DspManager(SdrSourceEventClient, ClientDemodulatorSecondaryDspEventClient)
             self.props.wireProperty("output_rate", self.chain.setOutputRate),
             self.props.wireProperty("hd_output_rate", self.chain.setHdOutputRate),
             self.props.wireProperty("st_output_rate", self.chain.setStOutputRate),
-            self.props.wireProperty("st_output_channels", self.chain.setStOutputRate),
             self.props.wireProperty("offset_freq", self.chain.setFrequencyOffset),
             self.props.wireProperty("center_freq", self.chain.setCenterFrequency),
             self.props.wireProperty("squelch_level", self.chain.setSquelchLevel),
@@ -644,7 +633,7 @@ class DspManager(SdrSourceEventClient, ClientDemodulatorSecondaryDspEventClient)
             return WFm(self.props["hd_output_rate"], self.props["wfm_deemphasis_tau"], self.props["wfm_rds_rbds"])
         elif demod == "bcfm":
             from csdr.chain.analog import BCFm
-            return BCFm(self.props["wfm_deemphasis_tau"], self.props["wfm_rds_rbds"], self.props["st_output_rate"], self.props["st_output_rate"], self.props["st_output_channels"])
+            return BCFm(self.props["st_output_rate"], self.props["wfm_deemphasis_tau"], self.props["wfm_rds_rbds"])
         elif demod == "am":
             from csdr.chain.analog import Am
             return Am()
