@@ -928,7 +928,7 @@ $.fn.faxMessagePanel = function() {
     return this.data('panel');
 };
 
-CwSkimmerMessagePanel = function(el) {
+SkimmerMessagePanel = function(el) {
     MessagePanel.call(this, el);
     this.texts = [];
 
@@ -937,13 +937,13 @@ CwSkimmerMessagePanel = function(el) {
     this.clearButton.on('click', function() { me.texts = []; });
 }
 
-CwSkimmerMessagePanel.prototype = Object.create(MessagePanel.prototype);
+SkimmerMessagePanel.prototype = Object.create(MessagePanel.prototype);
 
-CwSkimmerMessagePanel.prototype.supportsMessage = function(message) {
+SkimmerMessagePanel.prototype.supportsMessage = function(message) {
     return (message['mode'] === 'CW') || (message['mode'] === 'RTTY');
 };
 
-CwSkimmerMessagePanel.prototype.render = function() {
+SkimmerMessagePanel.prototype.render = function() {
     $(this.el).append($(
         '<table width="100%">' +
             '<thead><tr>' +
@@ -955,57 +955,85 @@ CwSkimmerMessagePanel.prototype.render = function() {
     ));
 };
 
-CwSkimmerMessagePanel.prototype.pushMessage = function(msg) {
+SkimmerMessagePanel.prototype.renderLine = function(data) {
+    return(
+        '<td class="freq">' +
+            '<span class="db" style="width:0%;">&nbsp;</span>' +
+            '<span>&nbsp;</span>' +
+        '</td>' +
+        '<td class="text">&nbsp;</td>'
+    );
+};
+
+SkimmerMessagePanel.prototype.pushMessage = function(msg) {
     // Must have some text
     if (!msg.text) return;
 
     // Clear cache if requested
 //    if (msg.changed) this.texts = [];
 
-    // Current time
+    // Current time and SnR
     var now = Date.now();
+    var snr = msg.db || 0;
+
+    // Skimmer table body
+    var body = $(this.el).find('tbody')[0];
+
+    // No need to recolor yet
+    var needRecolor = this.texts.length;
 
     // Modify or add a new entry
     var j = this.texts.findIndex(function(x) { return x.freq >= msg.freq });
     if (j < 0) {
         // Append a new entry
         if (msg.text.trim().length > 0) {
-            this.texts.push({ freq: msg.freq, text: msg.text, ts: now });
+            this.texts.push({ freq: msg.freq, text: msg.text, db: snr, ts: now });
+            j = this.texts.length - 1;
+            body.insertRow(j).innerHTML = this.renderLine(this.texts[j]);
+            needRecolor = j;
+        } else {
+            return;
         }
     } else if (this.texts[j].freq == msg.freq) {
         // Update existing entry
         this.texts[j].text = (this.texts[j].text + msg.text).slice(-64);
+        this.texts[j].db   = snr;
         this.texts[j].ts   = now;
     } else {
         // Insert a new entry
         if (msg.text.trim().length > 0) {
-            this.texts.splice(j, 0, { freq: msg.freq, text: msg.text, ts: now });
+            this.texts.splice(j, 0, { freq: msg.freq, text: msg.text, db: snr, ts: now });
+            body.insertRow(j).innerHTML = this.renderLine(this.texts[j]);
+            needRecolor = j;
+        } else {
+            return;
         }
     }
 
-    // Generate table body
-    var body = '';
+    // Update row contents
+    var f = Math.floor(this.texts[j].freq / 100.0) / 10.0;
+    var d = Math.floor(Math.max(0, Math.min(100, 100.0 * this.texts[j].db / 30.0)));
+    body.rows[j].cells[0].children[0].style.width = '' + d + '%';
+    body.rows[j].cells[0].children[1].innerText = f.toFixed(1);
+    body.rows[j].cells[1].innerText = this.texts[j].text;
+
+    // Remove stale rows, recolor as needed
     for (var j = 0 ; j < this.texts.length ; j++) {
         // Limit the lifetime of entries depending on their length
         var cutoff = 5000 * this.texts[j].text.length;
         if (now - this.texts[j].ts >= cutoff) {
+            body.deleteRow(j);
+            needRecolor = j;
             this.texts.splice(j--, 1);
-        } else {
-            var f = Math.floor(this.texts[j].freq / 100.0) / 10.0;
-            body +=
-                '<tr style="color:black;background-color:' + (j&1? '#E0FFE0':'#FFFFFF') +
-                ';"><td class="freq">' + f.toFixed(1) +
-                '</td><td class="text">' + this.texts[j].text + '</td></tr>\n';
+        } else if (j >= needRecolor) {
+            body.rows[j].style = 'color:black;background-color:' + (j&1? '#E0FFE0':'#FFFFFF') + ';';
         }
     }
-
-    // Assign new table body
-    $(this.el).find('tbody').html(body);
 };
 
-$.fn.cwskimmerMessagePanel = function() {
+$.fn.skimmerMessagePanel = function() {
     if (!this.data('panel')) {
-        this.data('panel', new CwSkimmerMessagePanel(this));
+        this.data('panel', new SkimmerMessagePanel(this));
     }
     return this.data('panel');
 };
