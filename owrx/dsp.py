@@ -511,7 +511,9 @@ class DspManager(SdrSourceEventClient, ClientDemodulatorSecondaryDspEventClient)
                 "digital_voice_codecserver",
                 "rig_enabled",
                 "dab_output_rate",
-                "ssb_agc_profile"
+                "ssb_agc_profile",
+                "nfm_agc_profile",
+                "am_agc_profile"
             ),
         )
 
@@ -627,7 +629,7 @@ class DspManager(SdrSourceEventClient, ClientDemodulatorSecondaryDspEventClient)
         # TODO: move this to Modes
         if demod == "nfm":
             from csdr.chain.analog import NFm
-            return NFm(self.props["output_rate"])
+            return NFm(self.props["output_rate"], AgcProfile(self.props["nfm_agc_profile"]))
         elif demod == "wfm":
             from csdr.chain.analog import WFm
             return WFm(self.props["hd_output_rate"], self.props["wfm_deemphasis_tau"], self.props["wfm_rds_rbds"])
@@ -636,10 +638,10 @@ class DspManager(SdrSourceEventClient, ClientDemodulatorSecondaryDspEventClient)
             return BCFm(self.props["st_output_rate"], self.props["wfm_deemphasis_tau"], self.props["wfm_rds_rbds"])
         elif demod == "am":
             from csdr.chain.analog import Am
-            return Am()
+            return Am(AgcProfile(self.props["am_agc_profile"]))
         elif demod == "sam":
             from csdr.chain.analog import SAm
-            return SAm()
+            return SAm(AgcProfile(self.props["am_agc_profile"]))
         elif demod in ["usb", "lsb", "cw"]:
             from csdr.chain.analog import Ssb
             return Ssb(AgcProfile(self.props["ssb_agc_profile"]))
