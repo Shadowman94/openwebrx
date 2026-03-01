@@ -213,6 +213,7 @@ function scale_setup() {
     scale_canvas.addEventListener("mousemove", scale_canvas_mousemove, false);
     scale_canvas.addEventListener("mouseup", scale_canvas_mouseup, false);
     scale_canvas.addEventListener("wheel", scale_canvas_mousewheel, false);
+    scale_canvas.addEventListener("contextmenu", scale_canvas_contextmenu, false);
     scale_canvas.addEventListener("touchmove", process_touch, false);
     scale_canvas.addEventListener("touchend", process_touch, false);
     scale_canvas.addEventListener("touchstart", process_touch, false);
@@ -299,6 +300,18 @@ function scale_canvas_mousewheel(evt) {
     for (var i = 0; i < demodulators.length; i++) event_handled |= demodulators[i].envelope.wheel(evt.pageX, dir, adjustWidth);
     // If not handled by demodulators, default to tuning or zooming
     if (!event_handled) canvas_mousewheel(evt);
+}
+
+function scale_canvas_contextmenu(evt) {
+    var demodulators = getDemodulators();
+    for (var i = 0; i < demodulators.length; i++) {
+        if (demodulators[i].envelope.containsPoint(evt.pageX)) {
+            evt.preventDefault();
+            demodulators[i].resetBandpassToDefault();
+            mkenvelopes(get_visible_freq_range());
+            return;
+        }
+    }
 }
 
 function scale_px_from_freq(f, range) {
