@@ -477,6 +477,7 @@ input[type=range]:disabled {
 	-moz-border-radius: 15px;
 	margin: 5.9px;
 	box-sizing: content-box;
+	transition: opacity 0.5s ease-out;
 }
 
 .openwebrx-panel a
@@ -2044,6 +2045,18 @@ img.openwebrx-mirror-img
 }
 
 .openwebrx-squelch-auto.highlighted .squelch {
+    display: none;
+}
+
+.openwebrx-opacity-button .bumped {
+    display: none;
+}
+
+.openwebrx-opacity-button.bumped .bumped {
+    display: initial;
+}
+
+.openwebrx-opacity-button.bumped .unbumped {
     display: none;
 }
 
