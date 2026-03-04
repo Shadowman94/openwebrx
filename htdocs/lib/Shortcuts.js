@@ -59,6 +59,10 @@ Shortcuts.init = function(target) {
         <div class="ks-item-txt">adjust bandpass offset</div>
         <div class="ks-item-kbd">${this.keycap('Shift')}+${this.keycap('ArrowLeft')}|${this.keycap('ArrowRight')}</div>
       </div>
+      <div class="ks-item">
+        <div class="ks-item-txt">reset bandpass to default</div>
+        <div class="ks-item-kbd">Right-click on bandpass</div>
+      </div>
 
       <div class="ks-item">
         <div class="ks-item-txt">toggle noise reduction</div>

@@ -16,6 +16,9 @@ function Filter(demodulator) {
         case 'wfm':
             max_bw = 100000;
             break;
+        case 'bcfm':
+            max_bw = 192000;
+            break;
         case 'drm':
             max_bw = 50000;
             break;
@@ -223,6 +226,12 @@ Envelope.prototype.drag_end = function(){
     var to_return = this.dragged_range !== Demodulator.draggable_ranges.none; //this part is required for cliking anywhere on the scale to set offset
     this.dragged_range = Demodulator.draggable_ranges.none;
     return to_return;
+};
+
+Envelope.prototype.containsPoint = function(x) {
+    var dr = this.drag_ranges;
+    if (!dr || !dr.envelope_on_screen || !dr.whole_envelope) return false;
+    return dr.whole_envelope.x1 <= x && x <= dr.whole_envelope.x2;
 };
 
 Envelope.prototype.wheel = function(x, dir, modifier){
@@ -443,6 +452,18 @@ Demodulator.prototype.getBandpass = function() {
         low_cut: this.low_cut,
         high_cut: this.high_cut
     };
+};
+
+// Reset bandpass to mode default and clear saved override
+Demodulator.prototype.resetBandpassToDefault = function() {
+    LS.delete('bp-' + this.modulation);
+    var mode = Modes.findByModulation(this.modulation);
+    var bp = (this.modulation === 'cw') ? UI.getCwBandpass() : (mode ? mode.bandpass : null);
+    if (bp) {
+        this.setBandpass(bp);
+    } else {
+        this.disableBandpass();
+    }
 };
 
 Demodulator.prototype.setIfRate = function(ifRate) {

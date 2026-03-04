@@ -213,6 +213,7 @@ function scale_setup() {
     scale_canvas.addEventListener("mousemove", scale_canvas_mousemove, false);
     scale_canvas.addEventListener("mouseup", scale_canvas_mouseup, false);
     scale_canvas.addEventListener("wheel", scale_canvas_mousewheel, false);
+    scale_canvas.addEventListener("contextmenu", scale_canvas_contextmenu, false);
     scale_canvas.addEventListener("touchmove", process_touch, false);
     scale_canvas.addEventListener("touchend", process_touch, false);
     scale_canvas.addEventListener("touchstart", process_touch, false);
@@ -299,6 +300,18 @@ function scale_canvas_mousewheel(evt) {
     for (var i = 0; i < demodulators.length; i++) event_handled |= demodulators[i].envelope.wheel(evt.pageX, dir, adjustWidth);
     // If not handled by demodulators, default to tuning or zooming
     if (!event_handled) canvas_mousewheel(evt);
+}
+
+function scale_canvas_contextmenu(evt) {
+    var demodulators = getDemodulators();
+    for (var i = 0; i < demodulators.length; i++) {
+        if (demodulators[i].envelope.containsPoint(evt.pageX)) {
+            evt.preventDefault();
+            demodulators[i].resetBandpassToDefault();
+            mkenvelopes(get_visible_freq_range());
+            return;
+        }
+    }
 }
 
 function scale_px_from_freq(f, range) {
@@ -1046,6 +1059,9 @@ function on_ws_recv(evt) {
                         $('#openwebrx-panel-metadata-wfm').metaPanel().each(function() {
                             this.setEnabled(!!json.value.rds);
                         });
+                        $('#openwebrx-panel-metadata-bcfm').metaPanel().each(function() {
+                            this.setEnabled(!!json.value.rds);
+                        });
                         break;
                     case "metadata":
                         $('.openwebrx-meta-panel').metaPanel().each(function(){
@@ -1168,6 +1184,10 @@ function on_ws_recv(evt) {
                 // hd audio data
                 audioEngine.pushHdAudio(data);
                 break;
+            case 5:
+                // st audio data
+                audioEngine.pushStAudio(data);
+                break;
             default:
                 console.warn('unknown type of binary message: ' + type)
         }
@@ -1191,7 +1211,8 @@ function on_ws_opened() {
         "type": "connectionproperties",
         "params": {
             "output_rate": audioEngine.getOutputRate(),
-            "hd_output_rate": audioEngine.getHdOutputRate()
+            "hd_output_rate": audioEngine.getHdOutputRate(),
+            "st_output_rate": audioEngine.getStOutputRate()
         }
     }));
 }

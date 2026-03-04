@@ -27,13 +27,17 @@ function AudioEngine(maxBufferLength, audioReporter) {
     this.setupResampling();
     this.resampler = new Interpolator(this.resamplingFactor);
     this.hdResampler = new Interpolator(this.hdResamplingFactor);
+    this.stResampler = new StereoInterpolator(this.stResamplingFactor);
 
     this.maxBufferSize = maxBufferLength * this.getSampleRate();
 
-    this.recorder = new AudioRecorder(this.getOutputRate(), 128);
-    this.hdRecorder = new AudioRecorder(this.getHdOutputRate(), 128);
+    this.recorder = new AudioRecorder(this.getOutputRate(), 128, 1);
+    this.hdRecorder = new AudioRecorder(this.getHdOutputRate(), 128, 1);
+    this.stRecorder = new AudioRecorder(this.getStOutputRate(), 128, 2);
     this.recording = false;
     this.lastHd = false;
+    this.lastSt = false;
+    this.channelCount = 1;
 }
 
 AudioEngine.prototype.buildAudioContext = function() {
@@ -105,7 +109,7 @@ AudioEngine.prototype._start = function() {
             me.audioNode = new AudioWorkletNode(me.audioContext, 'openwebrx-audio-processor', {
                 numberOfInputs: 0,
                 numberOfOutputs: 1,
-                outputChannelCount: [1],
+                outputChannelCount: [me.getChannelCount()],
                 processorOptions: {
                     maxBufferSize: me.maxBufferSize
                 }
@@ -136,38 +140,103 @@ AudioEngine.prototype._start = function() {
             }
         }
 
+        // Calculate initial buffer size based on channel count and sample rate
         var bufferSize;
-        if (me.audioContext.sampleRate < 44100 * 2)
-            bufferSize = 4096;
-        else if (me.audioContext.sampleRate >= 44100 * 2 && me.audioContext.sampleRate < 44100 * 4)
+        if (me.getChannelCount() == 2) {
             bufferSize = 4096 * 2;
-        else if (me.audioContext.sampleRate > 44100 * 4)
-            bufferSize = 4096 * 4;
-
+        } else {
+            if (me.audioContext.sampleRate < 44100 * 2)
+                bufferSize = 4096;
+            else if (me.audioContext.sampleRate >= 44100 * 2 && me.audioContext.sampleRate < 44100 * 4)
+                bufferSize = 4096 * 2;
+            else if (me.audioContext.sampleRate > 44100 * 4)
+                bufferSize = 4096 * 4;
+        }
 
         function audio_onprocess(e) {
             var total = 0;
-            var out = new Float32Array(bufferSize);
-            while (me.audioBuffers.length) {
-                var b = me.audioBuffers.shift();
-                // not enough space to fit all data, so splice and put back in the queue
-                if (total + b.length > bufferSize) {
-                    var spaceLeft  = bufferSize - total;
-                    var tokeep = b.subarray(0, spaceLeft);
-                    out.set(tokeep, total);
-                    var tobuffer = b.subarray(spaceLeft, b.length);
-                    me.audioBuffers.unshift(tobuffer);
-                    total += spaceLeft;
-                    break;
-                } else {
-                    out.set(b, total);
-                    total += b.length;
+
+            if(me.getChannelCount() == 2)
+            {
+                // Size arrays based on output buffer requirements
+                var outputFrames = e.outputBuffer.length;
+                var left  = new Float32Array(outputFrames);
+                var right = new Float32Array(outputFrames);
+                
+                // Size the interleaved buffer to exactly what we need
+                var neededSamples = outputFrames * 2; // interleaved stereo
+                var out = new Float32Array(neededSamples);
+                var numSamples = 0;
+                
+                // Fill the output buffer from audioBuffers
+                while (me.audioBuffers.length && numSamples < neededSamples) {
+                    var b = me.audioBuffers.shift();
+                    var spaceLeft = neededSamples - numSamples;
+                    
+                    if (b.length <= spaceLeft) {
+                        // Buffer fits completely
+                        out.set(b, numSamples);
+                        numSamples += b.length;
+                    } else {
+                        // Buffer is too large, take what we need and put rest back
+                        var tokeep = b.subarray(0, spaceLeft);
+                        out.set(tokeep, numSamples);
+                        var tobuffer = b.subarray(spaceLeft, b.length);
+                        me.audioBuffers.unshift(tobuffer);
+                        numSamples = neededSamples;
+                        break;
+                    }
                 }
+                
+                // De-interleave and fill output channels
+                for (var i = 0; i < outputFrames; i++) {
+                    if (i * 2 + 1 < numSamples) {
+                        left[i]  = out[i * 2];
+                        right[i] = out[i * 2 + 1];
+                    } else {
+                        // Fill with zeros if not enough data
+                        left[i] = 0;
+                        right[i] = 0;
+                    }
+                }
+                
+                // Fill the entire expected buffer
+                e.outputBuffer.copyToChannel(left, 0);
+                e.outputBuffer.copyToChannel(right, 1);
+                
+                me.audioSamples.add(outputFrames);
             }
+            else
+            {
+                if (me.audioContext.sampleRate < 44100 * 2)
+                    bufferSize = 4096;
+                else if (me.audioContext.sampleRate >= 44100 * 2 && me.audioContext.sampleRate < 44100 * 4)
+                    bufferSize = 4096 * 2;
+                else if (me.audioContext.sampleRate > 44100 * 4)
+                    bufferSize = 4096 * 4;
 
-            e.outputBuffer.copyToChannel(out, 0);
-            me.audioSamples.add(total);
+                var out = new Float32Array(bufferSize);
+                while (me.audioBuffers.length) {
+                    var b = me.audioBuffers.shift();
+                    // not enough space to fit all data, so splice and put back in the queue
+                    if (total + b.length > bufferSize) {
+                        var spaceLeft  = bufferSize - total;
+                        var tokeep = b.subarray(0, spaceLeft);
+                        out.set(tokeep, total);
+                        var tobuffer = b.subarray(spaceLeft, b.length);
+                        me.audioBuffers.unshift(tobuffer);
+                        total += spaceLeft;
+                        break;
+                    } else {
+                        out.set(b, total);
+                        total += b.length;
+                    }
+                }
 
+                e.outputBuffer.copyToChannel(out, 0);
+                e.outputBuffer.copyToChannel(out, 1);
+                me.audioSamples.add(total);
+            }
         }
 
         //on Chrome v36, createJavaScriptNode has been replaced by createScriptProcessor
@@ -175,7 +244,8 @@ AudioEngine.prototype._start = function() {
         if (me.audioContext.createJavaScriptNode) {
             method = 'createJavaScriptNode';
         }
-        me.audioNode = me.audioContext[method](bufferSize, 0, 1);
+
+        me.audioNode = me.audioContext[method](bufferSize, 0, 2);
         me.audioNode.onaudioprocess = audio_onprocess;
         me.audioNode.connect(me.gainNode);
         runCallbacks('ScriptProcessorNode')
@@ -198,6 +268,174 @@ AudioEngine.prototype.isAllowed = function() {
 
 AudioEngine.prototype.isStarted = function() {
     return this.started;
+};
+
+AudioEngine.prototype.restartAudioNode = function() {
+    var me = this;
+    
+    if (!me.started || !me.audioNode) {
+        return;
+    }
+    
+    var runCallbacks = function(workletType) {
+        // On restart, we don't need to run start callbacks again
+        // but we keep the structure for consistency
+    };
+    
+    // Disconnect and clean up old node
+    if (me.audioNode.port) {
+        // AudioWorklet - disconnect and let it be garbage collected
+        me.audioNode.disconnect();
+        me.audioNode = null;
+    } else {
+        // ScriptProcessorNode - disconnect and clean up
+        me.audioNode.disconnect();
+        me.audioNode = null;
+        // Clear audio buffers to avoid playing old data
+        if (me.audioBuffers) {
+            me.audioBuffers = [];
+        }
+    }
+    
+    // Recreate the audio node with new channel count
+    if (useAudioWorklets && me.audioContext.audioWorklet) {
+        me.audioContext.audioWorklet.addModule('static/lib/AudioProcessor.js').then(function(){
+            me.audioNode = new AudioWorkletNode(me.audioContext, 'openwebrx-audio-processor', {
+                numberOfInputs: 0,
+                numberOfOutputs: 1,
+                outputChannelCount: [me.getChannelCount()],
+                processorOptions: {
+                    maxBufferSize: me.maxBufferSize
+                }
+            });
+            me.audioNode.connect(me.gainNode);
+            me.audioNode.port.addEventListener('message', function(m){
+                var json = JSON.parse(m.data);
+                if (typeof(json.buffersize) !== 'undefined') {
+                    me.audioReporter({
+                        buffersize: json.buffersize
+                    });
+                }
+                if (typeof(json.samplesProcessed) !== 'undefined') {
+                    me.audioSamples.add(json.samplesProcessed);
+                }
+            });
+            me.audioNode.port.start();
+            runCallbacks('AudioWorklet');
+        });
+    } else {
+        me.audioBuffers = [];
+        
+        // Calculate initial buffer size based on channel count and sample rate
+        var bufferSize;
+        if (me.getChannelCount() == 2) {
+            bufferSize = 4096 * 2;
+        } else {
+            if (me.audioContext.sampleRate < 44100 * 2)
+                bufferSize = 4096;
+            else if (me.audioContext.sampleRate >= 44100 * 2 && me.audioContext.sampleRate < 44100 * 4)
+                bufferSize = 4096 * 2;
+            else if (me.audioContext.sampleRate > 44100 * 4)
+                bufferSize = 4096 * 4;
+        }
+        
+        function audio_onprocess(e) {
+            var total = 0;
+            
+            if(me.getChannelCount() == 2)
+            {
+                // Size arrays based on output buffer requirements
+                var outputFrames = e.outputBuffer.length;
+                var left  = new Float32Array(outputFrames);
+                var right = new Float32Array(outputFrames);
+                
+                // Size the interleaved buffer to exactly what we need
+                var neededSamples = outputFrames * 2; // interleaved stereo
+                var out = new Float32Array(neededSamples);
+                var numSamples = 0;
+                
+                // Fill the output buffer from audioBuffers
+                while (me.audioBuffers.length && numSamples < neededSamples) {
+                    var b = me.audioBuffers.shift();
+                    var spaceLeft = neededSamples - numSamples;
+                    
+                    if (b.length <= spaceLeft) {
+                        // Buffer fits completely
+                        out.set(b, numSamples);
+                        numSamples += b.length;
+                    } else {
+                        // Buffer is too large, take what we need and put rest back
+                        var tokeep = b.subarray(0, spaceLeft);
+                        out.set(tokeep, numSamples);
+                        var tobuffer = b.subarray(spaceLeft, b.length);
+                        me.audioBuffers.unshift(tobuffer);
+                        numSamples = neededSamples;
+                        break;
+                    }
+                }
+                
+                // De-interleave and fill output channels
+                for (var i = 0; i < outputFrames; i++) {
+                    if (i * 2 + 1 < numSamples) {
+                        left[i]  = out[i * 2];
+                        right[i] = out[i * 2 + 1];
+                    } else {
+                        // Fill with zeros if not enough data
+                        left[i] = 0;
+                        right[i] = 0;
+                    }
+                }
+                
+                // Fill the entire expected buffer
+                e.outputBuffer.copyToChannel(left, 0);
+                e.outputBuffer.copyToChannel(right, 1);
+                
+                me.audioSamples.add(outputFrames);
+            }
+            else
+            {
+                if (me.audioContext.sampleRate < 44100 * 2)
+                    bufferSize = 4096;
+                else if (me.audioContext.sampleRate >= 44100 * 2 && me.audioContext.sampleRate < 44100 * 4)
+                    bufferSize = 4096 * 2;
+                else if (me.audioContext.sampleRate > 44100 * 4)
+                    bufferSize = 4096 * 4;
+                
+                var out = new Float32Array(bufferSize);
+                while (me.audioBuffers.length) {
+                    var b = me.audioBuffers.shift();
+                    // not enough space to fit all data, so splice and put back in the queue
+                    if (total + b.length > bufferSize) {
+                        var spaceLeft  = bufferSize - total;
+                        var tokeep = b.subarray(0, spaceLeft);
+                        out.set(tokeep, total);
+                        var tobuffer = b.subarray(spaceLeft, b.length);
+                        me.audioBuffers.unshift(tobuffer);
+                        total += spaceLeft;
+                        break;
+                    } else {
+                        out.set(b, total);
+                        total += b.length;
+                    }
+                }
+                
+                e.outputBuffer.copyToChannel(out, 0);
+                e.outputBuffer.copyToChannel(out, 1);
+                me.audioSamples.add(total);
+            }
+        }
+        
+        //on Chrome v36, createJavaScriptNode has been replaced by createScriptProcessor
+        var method = 'createScriptProcessor';
+        if (me.audioContext.createJavaScriptNode) {
+            method = 'createJavaScriptNode';
+        }
+        
+        me.audioNode = me.audioContext[method](bufferSize, 0, 2);
+        me.audioNode.onaudioprocess = audio_onprocess;
+        me.audioNode.connect(me.gainNode);
+        runCallbacks('ScriptProcessorNode');
+    }
 };
 
 AudioEngine.prototype.reportStats = function() {
@@ -254,6 +492,16 @@ AudioEngine.prototype.setupResampling = function() { //both at the server and th
         this.hdResamplingFactor = hd_audio_params.resamplingFactor;
         this.hdOutputRate = hd_audio_params.outputRate;
     }
+
+    var st_audio_params = this.findRate(36000, 48000);
+    if (!st_audio_params) {
+        this.stResamplingFactor = 0;
+        this.stOutputRate = 0;
+        divlog('Your audio card sampling rate (' + targetRate + ') is not supported for Stereo audio<br />Please change your operating system default settings in order to fix this.', 1);
+    } else {
+        this.stResamplingFactor = st_audio_params.resamplingFactor;
+        this.stOutputRate = st_audio_params.outputRate;
+    }
 };
 
 AudioEngine.prototype.findRate = function(low, high) {
@@ -279,6 +527,14 @@ AudioEngine.prototype.getOutputRate = function() {
 
 AudioEngine.prototype.getHdOutputRate = function() {
     return this.hdOutputRate;
+}
+
+AudioEngine.prototype.getStOutputRate = function() {
+    return this.stOutputRate;
+}
+
+AudioEngine.prototype.getChannelCount = function() {
+    return this.channelCount;
 }
 
 AudioEngine.prototype.getSampleRate = function() {
@@ -310,14 +566,68 @@ AudioEngine.prototype.processAudio = function(data, resampler, recorder) {
     }
 }
 
+AudioEngine.prototype.processStAudio = function(data, resampler, recorder) {
+    if (!this.audioNode) return;
+
+    this.audioBytes.add(data.byteLength);
+    var buffer;
+    if (this.compression === "adpcm") {
+        //resampling & ADPCM
+        buffer = this.audioCodec.decodeWithSync(new Uint8Array(data));
+    } else {
+        buffer = new Int16Array(data);
+    }
+    
+    if(this.recording) {
+        recorder.record(buffer);
+    }
+    buffer = resampler.process(buffer);
+    
+    if (this.audioNode.port) {
+        // AudioWorklets supported
+        this.audioNode.port.postMessage(buffer);
+    } else {
+        // silently drop excess samples
+        if (this.getBuffersize() + buffer.length <= this.maxBufferSize) {
+            this.audioBuffers.push(buffer);
+        }
+    }
+}
+
 AudioEngine.prototype.pushAudio = function(data) {
+    // Check if channel count changed and restart audio node if needed
+    if (this.channelCount !== 1 && this.started) {
+        this.channelCount = 1;
+        this.restartAudioNode();
+    }
     this.processAudio(data, this.resampler, this.recorder);
     this.lastHd = false;
+    this.lastSt = false;
+    this.channelCount = 1;
 };
 
 AudioEngine.prototype.pushHdAudio = function(data) {
+    // Check if channel count changed and restart audio node if needed
+    if (this.channelCount !== 1 && this.started) {
+        this.channelCount = 1;
+        this.restartAudioNode();
+    }
     this.processAudio(data, this.hdResampler, this.hdRecorder);
     this.lastHd = true;
+    this.lastSt = false;
+    this.channelCount = 1;
+}
+
+AudioEngine.prototype.pushStAudio = function(data) {
+    // Check if channel count changed and restart audio node if needed
+    if (this.channelCount !== 2 && this.started) {
+        this.channelCount = 2;
+        this.restartAudioNode();
+    }
+    this.processStAudio(data, this.stResampler, this.stRecorder);
+    this.lastHd = false;
+    this.lastSt = true;
+    this.channelCount = 2;
 }
 
 AudioEngine.prototype.setCompression = function(compression) {
@@ -349,30 +659,57 @@ AudioEngine.prototype.stopRecording = function() {
         this.recording = false;
 
         // Save last updated recording
-        if (this.lastHd) {
+        if(this.lastSt) {
+            this.stRecorder.saveRecording(this.mp3fileName);
+        } else if (this.lastHd) {
             this.hdRecorder.saveRecording(this.mp3fileName);
         } else {
             this.recorder.saveRecording(this.mp3fileName);
         }
 
         // Clear and stop all recorders
+        this.stRecorder.stopRecording();
         this.hdRecorder.stopRecording();
         this.recorder.stopRecording();
     }
 };
 
-function AudioRecorder(sampleRate, kbps) {
+function AudioRecorder(sampleRate, kbps, channelCount) {
     // Mono (1 channel), with given sample rate and bitrate
-    this.mp3encoder = new lamejs.Mp3Encoder(1, sampleRate, kbps);
+    this.channelCount = channelCount;
+    this.sampleRate = sampleRate;
+    this.mp3encoder = new lamejs.Mp3Encoder(channelCount, sampleRate, kbps);
     this.blockSize  = 1152; // better be a multiple of 576
     this.mp3Data    = [];
 }
 
 AudioRecorder.prototype.record = function(samples) {
-    for (var i = 0; i < samples.length; i += this.blockSize) {
-        var chunk  = samples.subarray(i, i + this.blockSize);
-        var mp3buf = this.mp3encoder.encodeBuffer(chunk);
-        if (mp3buf.length > 0) this.mp3Data.push(mp3buf);
+    if(this.channelCount == 2) {
+        // samples is interleaved stereo: [L0, R0, L1, R1, L2, R2, ...]
+        // Process in chunks of blockSize frames (blockSize * 2 interleaved samples)
+        for (var i = 0; i < samples.length; i += this.blockSize * 2) {
+            var chunkSize = Math.min(this.blockSize * 2, samples.length - i);
+            var interleavedChunk = samples.subarray(i, i + chunkSize);
+            var numFrames = chunkSize / 2;
+            
+            // De-interleave into separate left and right channels
+            var leftChunk = new Int16Array(numFrames);
+            var rightChunk = new Int16Array(numFrames);
+            
+            for (var j = 0; j < numFrames; j++) {
+                leftChunk[j] = interleavedChunk[j * 2];
+                rightChunk[j] = interleavedChunk[j * 2 + 1];
+            }
+            
+            var mp3buf = this.mp3encoder.encodeBuffer(leftChunk, rightChunk);
+            if (mp3buf.length > 0) this.mp3Data.push(mp3buf);
+        }
+    } else {
+        for (var i = 0; i < samples.length; i += this.blockSize) {
+            var chunk  = samples.subarray(i, i + this.blockSize);
+            var mp3buf = this.mp3encoder.encodeBuffer(chunk);
+            if (mp3buf.length > 0) this.mp3Data.push(mp3buf);
+        }
     }
 };
 
@@ -519,6 +856,53 @@ Interpolator.prototype.process = function(data) {
         output[i * this.factor] = (data[i] + 0.5) / 32768;
     }
     return this.lowpass.process(output);
+};
+
+function StereoInterpolator(factor) {
+    this.factor = factor;
+    this.leftLowpass = new Lowpass(factor);
+    this.rightLowpass = new Lowpass(factor);
+}
+
+StereoInterpolator.prototype.process = function(data) {
+    // data is interleaved stereo: L0, R0, L1, R1, L2, R2, ...
+    var numFrames = data.length / 2;
+    var outputLength = data.length * this.factor;
+    var output = new Float32Array(outputLength);
+    
+    // Process interleaved data maintaining stereo pairing
+    for (var frame = 0; frame < numFrames; frame++) {
+        var leftSample = (data[frame * 2] + 0.5) / 32768;
+        var rightSample = (data[frame * 2 + 1] + 0.5) / 32768;
+        
+        // Place samples at correct positions maintaining interleaving
+        var outputFrame = frame * this.factor;
+        output[outputFrame * 2] = leftSample;
+        output[outputFrame * 2 + 1] = rightSample;
+    }
+    
+    // Apply separate lowpass filters to each channel
+    var leftChannel = new Float32Array(outputLength / 2);
+    var rightChannel = new Float32Array(outputLength / 2);
+    
+    // De-interleave for filtering
+    for (var i = 0; i < outputLength / 2; i++) {
+        leftChannel[i] = output[i * 2];
+        rightChannel[i] = output[i * 2 + 1];
+    }
+    
+    // Filter each channel separately
+    var filteredLeft = this.leftLowpass.process(leftChannel);
+    var filteredRight = this.rightLowpass.process(rightChannel);
+    
+    // Re-interleave filtered output
+    var finalOutput = new Float32Array(outputLength);
+    for (var i = 0; i < outputLength / 2; i++) {
+        finalOutput[i * 2] = filteredLeft[i];
+        finalOutput[i * 2 + 1] = filteredRight[i];
+    }
+    
+    return finalOutput;
 };
 
 function Lowpass(interpolation) {
