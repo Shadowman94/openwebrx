@@ -21,6 +21,19 @@ class Am(BaseDemodulatorChain):
         super().__init__(workers)
 
 
+class WAm(BaseDemodulatorChain, HdAudio):
+    def __init__(self, agcProfile: AgcProfile = AgcProfile.SLOW):
+        agc = Agc(Format.FLOAT)
+        agc.setProfile(agcProfile)
+        agc.setInitialGain(200)
+        workers = [
+            AmDemod(),
+            DcBlock(),
+            agc,
+        ]
+        super().__init__(workers)
+
+
 class NFm(BaseDemodulatorChain):
     def __init__(self, sampleRate: int, agcProfile: AgcProfile = AgcProfile.SLOW):
         self.sampleRate = sampleRate
