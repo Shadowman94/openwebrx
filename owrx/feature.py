@@ -745,7 +745,7 @@ class FeatureDetector(object):
         """
         OpenWebRX supports decoding HFDL airplane communications by using the
         [DumpHFDL](https://github.com/szpajder/dumphfdl) decoder. You can
-        install the `dumphfdl` package from the OpenWebRX repositories.
+        install the `dumphfdl` package from the OpenWebRX+ repositories.
         """
         return self.command_is_runnable("dumphfdl --version")
 
@@ -753,7 +753,7 @@ class FeatureDetector(object):
         """
         OpenWebRX supports decoding VDL Mode 2 airplane communications by using the
         [DumpVDL2](https://github.com/szpajder/dumpvdl2) decoder. You can
-        install the `dumpvdl2` package from the OpenWebRX repositories.
+        install the `dumpvdl2` package from the OpenWebRX+ repositories.
         """
         return self.command_is_runnable("dumpvdl2 --version")
 
@@ -810,7 +810,7 @@ class FeatureDetector(object):
             return False
 
     def _has_acarsdec_version(self, required_version):
-        acarsdec_version_regex = re.compile(r"^Acarsdec\s+v?(\S+)\s+")
+        acarsdec_version_regex = re.compile(r"^Acarsdec\S*\s+v?(\S+)\s+Copyright")
         try:
             process = subprocess.Popen(["acarsdec"], stderr=subprocess.PIPE)
             matches = None
@@ -830,8 +830,8 @@ class FeatureDetector(object):
     def has_acarsdec(self):
         """
         OpenWebRX supports decoding ACARS airplane communications by using the
-        [AcarsDec](https://github.com/TLeconte/acarsdec) decoder. You can
-        install the `acarsdec` package from the OpenWebRX repositories.
+        [AcarsDec](https://github.com/f00b4r0/acarsdec) decoder. You can
+        install the `acarsdec` package from the OpenWebRX+ repositories.
         """
         return self._has_acarsdec_version(LooseVersion("4"))
 
@@ -847,8 +847,8 @@ class FeatureDetector(object):
         """
         OpenWebRX supports decoding FLEX, POCSAG, and several other digital modes
         by using the [MultiMon-NG](https://github.com/EliasOenal/multimon-ng)
-        decoder suite. The `multimon-ng` package is available in most Linux
-        distributions.
+        decoder suite. You can install the `multimon-ng` package from the
+        OpenWebRX+ repositories.
         """
         return self.command_is_runnable("multimon-ng --help")
 
