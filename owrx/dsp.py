@@ -672,7 +672,7 @@ class DspManager(SdrSourceEventClient, ClientDemodulatorSecondaryDspEventClient)
         elif demod == "freedv":
             from csdr.chain.freedv import FreeDV
             return FreeDV()
-        elif demod == "rade":
+        elif demod in ["radel", "radeu"]:
             from csdr.chain.freedv import RADE
             return RADE()
         elif demod == "dab":
@@ -946,9 +946,7 @@ class DspManager(SdrSourceEventClient, ClientDemodulatorSecondaryDspEventClient)
         return unpickler
 
     def stop(self):
-        if self.chain:
-            self.chain.stop()
-            self.chain = None
+        self.chain.stop()
         for reader in self.readers.values():
             reader.stop()
         self.readers = {}

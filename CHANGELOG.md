@@ -1,3 +1,18 @@
+**1.2.110**
+- Added AIS reporting to VesselFinder [Ari Cooper Davis].
+- Added 48kHz-2MHz sample rates for PerseusSDR [oettlalb].
+- Added 128MHz ADC support for RX-888mkII [SteamedFish].
+- Added 64MHz sample rate for RX-888mkII [SteamedFish].
+- No longer removing chain when stopping DSP.
+
+**1.2.109**
+- Added separate RADEL and RADEU modes.
+- Added trusted proxies config [Giulio Fieramosca].
+- Added back sound for digital modes.
+- Updated feature installation instructions.
+- Updated integration with latest NRSC5.
+- Updated AcarsDec version check.
+
 **1.2.108**
 - Added 100% UI opacity bump option.
 - Added FreeDV RADEv1 digital voice support.

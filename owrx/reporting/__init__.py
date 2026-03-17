@@ -1,6 +1,7 @@
 import threading
 from owrx.config import Config
 from owrx.reporting.reporter import Reporter, FilteredReporter
+from owrx.reporting.aisreporter import AisReporter
 from owrx.reporting.pskreporter import PskReporter
 from owrx.reporting.wsprnet import WsprnetReporter
 from owrx.feature import FeatureDetector
@@ -18,6 +19,7 @@ class ReportingEngine(object):
     reporterClasses = {
         "pskreporter": PskReporter,
         "wsprnet": WsprnetReporter,
+        "aisreporter": AisReporter,
         "mqtt": ("owrx.reporting.mqtt", "MqttReporter")
     }
 

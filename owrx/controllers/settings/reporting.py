@@ -98,6 +98,23 @@ class ReportingController(SettingsFormController):
                 ),
             ),
             Section(
+                "AIS reporter settings",
+                CheckboxInput(
+                    "aisreporter_enabled",
+                    "Enable sending AIS data to VesselFinder",
+                ),
+                TextInput(
+                    "aisreporter_udp_hosts",
+                    "AIS UDP host(s)",
+                    infotext="Comma separated list of AIS receiver hostnames.",
+                ),
+                TextInput(
+                    "aisreporter_udp_ports",
+                    "AIS UDP port(s)",
+                    infotext="Comma separated list of AIS receiver UDP ports",
+                ),
+            ),
+            Section(
                 "MQTT settings",
                 CheckboxInput(
                     "mqtt_enabled",
