@@ -1,7 +1,7 @@
 from csdr.chain.demodulator import BaseDemodulatorChain, FixedIfSampleRateChain, HdAudio, StAudio, \
     FixedAudioRateChain, DeemphasisTauChain, MetaProvider, RdsChain
 from pycsdr.modules import AmDemod, DcBlock, FmDemod, BCFmDemod, Limit, NfmDeemphasis, Agc, Afc, \
-    WfmDeemphasis, FractionalDecimator, StereoFractionalDecimator, RealPart, Writer, Buffer
+    WfmDeemphasis, FractionalDecimator, StereoFractionalDecimator, AudioResampler, RealPart, Writer, Buffer
 from pycsdr.types import Format, AgcProfile
 from csdr.chain.toolbox import RdsDemodulator
 from typing import Optional
@@ -123,7 +123,8 @@ class BCFm(BaseDemodulatorChain, FixedIfSampleRateChain, StAudio, MetaProvider):
     def __init__(self, sampleRate: int, tau: float, rdsRbds: bool):
         self.sampleRate = sampleRate
         self.StereoMPXRate = 192000
-        self.outputRate = self.StereoMPXRate
+        self.outputRate = self.sampleRate
+        self.internalStereoRate = 48000 if self.sampleRate == 44100 else self.sampleRate
         self.DecimPolyPoints = 12
         self.tau = tau
         self.rdsRbds = rdsRbds
@@ -133,7 +134,8 @@ class BCFm(BaseDemodulatorChain, FixedIfSampleRateChain, StAudio, MetaProvider):
         workers = [
             BCFmDemod(),
             self.limit,
-            StereoFractionalDecimator(Format.FLOAT, self.StereoMPXRate, self.StereoMPXRate / self.sampleRate, self.tau, numPolyPoints=self.DecimPolyPoints, prefilter=False),
+            StereoFractionalDecimator(Format.FLOAT, self.StereoMPXRate, self.StereoMPXRate / self.internalStereoRate, self.tau, numPolyPoints=self.DecimPolyPoints, prefilter=False),
+            AudioResampler(self.internalStereoRate, self.sampleRate, channels=2),
         ]
         self.metaChain = None
         self.metaWriter = None
@@ -157,13 +159,16 @@ class BCFm(BaseDemodulatorChain, FixedIfSampleRateChain, StAudio, MetaProvider):
         if tau == self.tau:
             return
         self.tau = tau
-        self.replace(2, StereoFractionalDecimator(Format.FLOAT, self.StereoMPXRate, self.StereoMPXRate / self.sampleRate, self.tau, numPolyPoints=self.DecimPolyPoints, prefilter=False))
+        self.replace(2, StereoFractionalDecimator(Format.FLOAT, self.StereoMPXRate, self.StereoMPXRate / self.internalStereoRate, self.tau, numPolyPoints=self.DecimPolyPoints, prefilter=False))
 
     def setSampleRate(self, sampleRate: int) -> None:
         if sampleRate == self.sampleRate:
             return
         self.sampleRate = sampleRate
-        self.replace(2, StereoFractionalDecimator(Format.FLOAT, self.StereoMPXRate, self.StereoMPXRate / self.sampleRate, self.tau, numPolyPoints=self.DecimPolyPoints, prefilter=False))
+        self.outputRate = self.sampleRate
+        self.internalStereoRate = 48000 if self.sampleRate == 44100 else self.sampleRate
+        self.replace(2, StereoFractionalDecimator(Format.FLOAT, self.StereoMPXRate, self.StereoMPXRate / self.internalStereoRate, self.tau, numPolyPoints=self.DecimPolyPoints, prefilter=False))
+        self.replace(3, AudioResampler(self.internalStereoRate, self.sampleRate, channels=2))
 
     def setMetaWriter(self, writer: Writer) -> None:
         if not FeatureDetector().is_available("rds"):

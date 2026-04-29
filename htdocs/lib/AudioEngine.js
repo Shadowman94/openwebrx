@@ -153,19 +153,28 @@ AudioEngine.prototype._start = function() {
                 bufferSize = 4096 * 4;
         }
 
+        var stereoLeft = null;
+        var stereoRight = null;
+        var stereoInterleaved = null;
+
         function audio_onprocess(e) {
             var total = 0;
 
             if(me.getChannelCount() == 2)
             {
-                // Size arrays based on output buffer requirements
                 var outputFrames = e.outputBuffer.length;
-                var left  = new Float32Array(outputFrames);
-                var right = new Float32Array(outputFrames);
-                
-                // Size the interleaved buffer to exactly what we need
                 var neededSamples = outputFrames * 2; // interleaved stereo
-                var out = new Float32Array(neededSamples);
+
+                // Reuse temporary buffers to reduce GC pressure in audio callback.
+                if (!stereoLeft || stereoLeft.length !== outputFrames) {
+                    stereoLeft = new Float32Array(outputFrames);
+                    stereoRight = new Float32Array(outputFrames);
+                    stereoInterleaved = new Float32Array(neededSamples);
+                }
+
+                var left = stereoLeft;
+                var right = stereoRight;
+                var out = stereoInterleaved;
                 var numSamples = 0;
                 
                 // Fill the output buffer from audioBuffers
@@ -204,7 +213,7 @@ AudioEngine.prototype._start = function() {
                 e.outputBuffer.copyToChannel(left, 0);
                 e.outputBuffer.copyToChannel(right, 1);
                 
-                me.audioSamples.add(outputFrames);
+                me.audioSamples.add(numSamples / 2);
             }
             else
             {
@@ -338,20 +347,29 @@ AudioEngine.prototype.restartAudioNode = function() {
             else if (me.audioContext.sampleRate > 44100 * 4)
                 bufferSize = 4096 * 4;
         }
+
+        var stereoLeft = null;
+        var stereoRight = null;
+        var stereoInterleaved = null;
         
         function audio_onprocess(e) {
             var total = 0;
             
             if(me.getChannelCount() == 2)
             {
-                // Size arrays based on output buffer requirements
                 var outputFrames = e.outputBuffer.length;
-                var left  = new Float32Array(outputFrames);
-                var right = new Float32Array(outputFrames);
-                
-                // Size the interleaved buffer to exactly what we need
                 var neededSamples = outputFrames * 2; // interleaved stereo
-                var out = new Float32Array(neededSamples);
+
+                // Reuse temporary buffers to reduce GC pressure in audio callback.
+                if (!stereoLeft || stereoLeft.length !== outputFrames) {
+                    stereoLeft = new Float32Array(outputFrames);
+                    stereoRight = new Float32Array(outputFrames);
+                    stereoInterleaved = new Float32Array(neededSamples);
+                }
+
+                var left = stereoLeft;
+                var right = stereoRight;
+                var out = stereoInterleaved;
                 var numSamples = 0;
                 
                 // Fill the output buffer from audioBuffers
@@ -390,17 +408,10 @@ AudioEngine.prototype.restartAudioNode = function() {
                 e.outputBuffer.copyToChannel(left, 0);
                 e.outputBuffer.copyToChannel(right, 1);
                 
-                me.audioSamples.add(outputFrames);
+                me.audioSamples.add(numSamples / 2);
             }
             else
-            {
-                if (me.audioContext.sampleRate < 44100 * 2)
-                    bufferSize = 4096;
-                else if (me.audioContext.sampleRate >= 44100 * 2 && me.audioContext.sampleRate < 44100 * 4)
-                    bufferSize = 4096 * 2;
-                else if (me.audioContext.sampleRate > 44100 * 4)
-                    bufferSize = 4096 * 4;
-                
+            {                  
                 var out = new Float32Array(bufferSize);
                 while (me.audioBuffers.length) {
                     var b = me.audioBuffers.shift();
