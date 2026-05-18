@@ -410,5 +410,10 @@ class LoraParser(TextParser):
         return out
 
     def parsePayload(self, out, data: bytes):
-        # Add your LoRa payload parser here
+        if len(data) > 3 and data[0] == 0x3C and data[1] == 0xFF and data[2] == 0x01:
+            self.parseAprs(out, data[3:])
+        # Add your own LoRa payload parsers here
+
+    def parseAprs(self, out, data: bytes):
+        # Add APRS parser here
         pass
