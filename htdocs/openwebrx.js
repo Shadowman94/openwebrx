@@ -109,10 +109,12 @@ function jumpBySteps(steps) {
     if (steps != 0) {
         var key = UI.getDemodulatorPanel().getMagicKey();
         var f = center_freq + steps * bandwidth / 4;
-        ws.send(JSON.stringify({
-            "type": "setfrequency", "params": { "frequency": f, "key": key }
-        }));
-        UI.toggleScanner(false);
+        if (f >= 0) {
+            ws.send(JSON.stringify({
+                "type": "setfrequency", "params": { "frequency": f, "key": key }
+            }));
+            UI.toggleScanner(false);
+        }
     }
 }
 
@@ -1239,7 +1241,7 @@ var mute = false;
 var audio_buffer_maximal_length_sec = 1; //actual number of samples are calculated from sample rate
 
 function onAudioStart(apiType){
-    divlog('Web Audio API succesfully initialized, using ' + apiType  + ' API, sample rate: ' + audioEngine.getSampleRate() + " Hz");
+    divlog('Web Audio API successfully initialized, using ' + apiType  + ' API, sample rate: ' + audioEngine.getSampleRate() + " Hz");
 
     hideOverlay();
 

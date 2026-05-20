@@ -327,7 +327,6 @@ class OpenWebRxReceiverClient(OpenWebRxClient, SdrSourceEventClient):
                     else:
                         if "action" in message and message["action"] == "start":
                             dsp.start()
-
                         if "params" in message:
                             params = message["params"]
                             dsp.setProperties(params)
@@ -345,15 +344,16 @@ class OpenWebRxReceiverClient(OpenWebRxClient, SdrSourceEventClient):
                     # If the magic key is set in the settings, only allow
                     # changes if it matches the received key
                     if "params" in message and "frequency" in message["params"]:
-                        if self.stack["allow_center_freq_changes"]:
-                            params = message["params"]
-                            magic  = self.stack["magic_key"]
-                            key    = params["key"] if "key" in params else None
+                        params = message["params"]
+                        freq   = params["frequency"]
+                        if freq >= 0 and self.stack["allow_center_freq_changes"]:
+                            magic = self.stack["magic_key"]
+                            key   = params["key"] if "key" in params else None
                             if magic == "" or key == magic:
-                                self.sdr.setCenterFreq(params["frequency"])
+                                self.sdr.setCenterFreq(freq)
                 elif message["type"] == "connectionproperties":
                     if "params" in message:
-                        self.connectionProperties = message["params"]
+                        self.connectionProperties.update(message["params"])
                         if self.dsp:
                             self.getDsp().setProperties(self.connectionProperties)
                 elif message["type"] == "sendmessage":
@@ -439,7 +439,6 @@ class OpenWebRxReceiverClient(OpenWebRxClient, SdrSourceEventClient):
     def handleSdrAvailable(self):
         self.getDsp().setProperties(self.connectionProperties)
         self.stack.replaceLayer(0, self.sdr.getProps())
-
         self.sdr.addSpectrumClient(self)
 
     def handleNoSdrsAvailable(self):
@@ -470,6 +469,7 @@ class OpenWebRxReceiverClient(OpenWebRxClient, SdrSourceEventClient):
         with self.dspLock:
             if self.dsp is None and self.sdr is not None:
                 self.dsp = DspManager(self, self.sdr)
+                self.dsp.setProperties(self.connectionProperties)
         return self.dsp
 
     def write_spectrum_data(self, data):
