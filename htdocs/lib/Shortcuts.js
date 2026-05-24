@@ -147,6 +147,15 @@ Shortcuts.init = function(target) {
         <div class="ks-item-kbd">${this.keycap('|')}</div>
       </div>
       <div class="ks-item">
+        <div class="ks-item-txt">input frequency</div>
+        <div class="ks-item-kbd">${this.keycap('T')}</div>
+      </div>
+      <div class="ks-item">
+        <div class="ks-item-txt">select profile</div>
+        <div class="ks-item-kbd">${this.keycap('P')}</div>
+      </div>
+
+      <div class="ks-item">
         <div class="ks-item-txt">side-step current profile</div>
         <div class="ks-item-kbd">${this.keycap('PageUp')}|${this.keycap('PageDown')}</div>
       </div>
@@ -172,9 +181,10 @@ Shortcuts.moveSelector = function(selector, steps) {
 };
 
 Shortcuts.handleKey = function(event) {
-    // Do not handle shortcuts when focused on a text or numeric input
-    var on_input = !!($('input:focus').length && ($('input:focus')[0].type === 'text' || $('input:focus')[0].type === 'number'));
-    if (on_input) return;
+    // Do not handle shortcuts when focused on an input or list selector
+    var tag = document.activeElement? document.activeElement.tagName : null;
+    if (tag && (tag === 'INPUT' || tag === 'TEXTAREA'))
+        return;
 
     // Leave CTRL+<LETTER> combinations to the browser
     if (event.ctrlKey && event.key.match(/^[a-z]$/i)) return;
@@ -394,6 +404,20 @@ Shortcuts.handleKey = function(event) {
         case 'l':
             // L: Toggle log/chat panel
             $('div.button[data-toggle-panel="openwebrx-panel-log"]')[0].click();
+            break;
+
+        case 't':
+            // T: Open frequency input
+            $('.webrx-actual-freq > div').click();
+            $('.webrx-actual-freq > div > input[type="number"]').focus();
+            $('.webrx-actual-freq > div > input[type="number"]').select();
+            break;
+
+        case 'p':
+            // P: Open profile selection
+            var profiles = $('#openwebrx-sdr-profiles-listbox')[0];
+            profiles.focus();
+            profiles.showPicker();
             break;
 
         case 'enter':
