@@ -61,7 +61,10 @@ function zoomOutTotal() {
 function tuneBySteps(steps) {
     steps = Math.round(steps);
     if (steps != 0) {
-        UI.setFrequency(UI.getFrequency() + steps * tuning_step);
+        var f = UI.getFrequency() / tuning_step;
+        var i = Math.floor(f);
+        if (i != f && steps < 0) steps++;
+        UI.setFrequency((i + steps) * tuning_step);
     }
 }
 
@@ -1432,6 +1435,11 @@ function audioReporter(stats) {
 function openwebrx_init() {
     // Name used by map links to tune receiver
     frames.name = 'openwebrx-rx';
+
+    // Show Android app link when running on Android
+    if (/android/i.test(navigator.userAgent)) {
+        $('#openwebrx-get-android-app').show();
+    }
 
     audioEngine = new AudioEngine(audio_buffer_maximal_length_sec, audioReporter);
     var $overlay = $('#openwebrx-autoplay-overlay');
