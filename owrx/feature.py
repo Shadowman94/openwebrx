@@ -57,6 +57,7 @@ class FeatureDetector(object):
         "rtl_sdr_soapy": ["soapy_connector", "soapy_rtl_sdr"],
         "rtl_tcp": ["rtl_tcp_connector"],
         "sdrplay": ["soapy_connector", "soapy_sdrplay"],
+        "elad": ["soapy_connector", "soapy_elad"],
         "mirics": ["soapy_connector", "soapy_mirics"],
         "malahit_rr": ["soapy_connector", "soapy_malahit_rr"],
         "hackrf": ["soapy_connector", "soapy_hackrf"],
@@ -97,6 +98,7 @@ class FeatureDetector(object):
         "hfdl": ["dumphfdl"],
         "vdl2": ["dumpvdl2"],
         "acars": ["acarsdec"],
+        "tetra": ["tetrarx"],
         "page": ["multimon"],
         "selcall": ["multimon"],
         "eas": ["multimon"],
@@ -355,6 +357,13 @@ class FeatureDetector(object):
         from the manufacturer.
         """
         return self._has_soapy_driver("sdrplay")
+
+    def has_soapy_elad(self):
+        """
+        The [SoapySDR module for ELAD](https://github.com/DisagioDigitale/SoapyELAD)
+        devices is required for interfacing with the ELAD FDM-S2 hardware.
+        """
+        return self._has_soapy_driver("elad")
 
     def has_soapy_mirics(self):
         """
@@ -930,3 +939,12 @@ class FeatureDetector(object):
         from the OpenWebRX repositories.
         """
         return os.path.isdir("/usr/share/aprs-symbols")
+
+    def has_tetrarx(self):
+        """
+        OpenWebRX uses `tetrarx` by [OE5DXL](http://oe5dxl.hamspirit.at:8025/aprs/c) to demodulate and decode TETRA
+        D4PSK signals. Install by placing the `tetrarx` binary in your PATH
+        (e.g. /usr/local/bin).
+        """
+        return self.command_is_runnable("tetrarx -h")
+
