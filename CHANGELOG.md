@@ -6,9 +6,11 @@
 - Added ADS-C payload parsing inside ACARS.
 - Added parsing ACARS legacy position reports.
 - Added ACARS parsing inside VDL2 and HFDL.
-- Added airplane temperature and wind display.
+- Added airplane temperature, wind, route display.
 - Added options to drop ACARS and VDL2 acks.
+- Added options for LoRa decoder bandwidths.
 - Made Meshtastic map objects use regular TTL.
+- Fixed flickering horizontal waterfall lines.
 - Fixed web agent threads hanging on exit.
 
 **1.2.116**
