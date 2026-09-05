@@ -78,6 +78,28 @@ UI.loadAudioSettings = function() {
 }
 
 //
+// Floating message bubble
+//
+
+UI.showBubble = function(message) {
+    var $bubble = $('#openwebrx-message-bubble');
+    if ($bubble) {
+        $bubble.html(message);
+        $bubble.show();
+        $bubble.addClass('shown');
+        if (this.bubbleTimeout) {
+            clearTimeout(this.bubbleTimeout);
+            this.bubbleTimeout = null;
+        }
+        this.bubbleTimeout = setTimeout(() => {
+            $bubble.one('transitionend', () => { $bubble.hide(); });
+            $bubble.removeClass('shown');
+            this.bubbleTimeout = null;
+        }, 3000);
+    }
+};
+
+//
 // Modulation Controls
 //
 
@@ -176,6 +198,13 @@ UI.tuneBookmark = function(b) {
     // Tune to the bookmark frequency, do not snap
     UI.setModulation(b.modulation, b.underlying);
     UI.setFrequency(b.frequency, false);
+
+    // Show bookmark name in a bubble
+    UI.showBubble(
+        '<div style="text-align:center;">' + b.name +
+        (!b.description? '' : '<div style="font-size:75%;">' + b.description + '</div>') +
+        '</div>'
+    );
 
     // Done
     return true;

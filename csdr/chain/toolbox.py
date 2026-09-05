@@ -4,6 +4,7 @@ from pycsdr.modules import Convert, Agc, FmDemod, RealPart, SnrSquelch
 from pycsdr.types import Format
 from owrx.toolbox import TextParser, PageParser, SelCallParser, EasParser, IsmParser, RdsParser, Mp3Recorder
 from owrx.skimmer import CwSkimmerParser, RttySkimmerParser
+from owrx.transcribe import WhisperTranscriber
 from owrx.config import Config
 
 import math
@@ -188,11 +189,8 @@ class AudioRecorder(ServiceDemodulator, DialFrequencyReceiver):
         # Connect all the workers
         super().__init__(workers)
 
-    def _convertToLinear(self, db: float) -> float:
-        return float(math.pow(10, db / 10))
-
     def setSquelchLevel(self, level: float) -> None:
-        self.squelch.setSquelchLevel(self._convertToLinear(level))
+        self.squelch.setThreshold(level)
 
     def getFixedAudioRate(self) -> int:
         return self.sampleRate
@@ -203,3 +201,35 @@ class AudioRecorder(ServiceDemodulator, DialFrequencyReceiver):
     def setDialFrequency(self, frequency: int) -> None:
         # Not restarting LAME, it is ok to continue on a new file
         self.recorder.setDialFrequency(frequency)
+
+
+class AudioTranscriber(ServiceDemodulator, DialFrequencyReceiver):
+    def __init__(self, sampleRate: int = 12000, service: bool = False):
+        # Get SNR squelch settings
+        pm = Config.get()
+        squelchLevel = pm["speech_squelch"]
+        hangTime = int(sampleRate * pm["speech_hang_time"] / 1000)
+        # Use SNR squelch to avoid sending noise to transcriber
+        self.sampleRate = sampleRate
+        self.squelch = SnrSquelch(Format.FLOAT, 512, 512, hangTime, 0, 1, False)
+        self.transcriber = WhisperTranscriber(sampleRate, service)
+        self.setSquelchLevel(squelchLevel)
+        workers = [
+            self.squelch,
+            Convert(Format.FLOAT, Format.SHORT),
+            self.transcriber,
+        ]
+        # Connect all the workers
+        super().__init__(workers)
+
+    def setSquelchLevel(self, level: float) -> None:
+        self.squelch.setThreshold(level)
+
+    def getFixedAudioRate(self) -> int:
+        return self.sampleRate
+
+    def supportsSquelch(self) -> bool:
+        return True
+
+    def setDialFrequency(self, frequency: int) -> None:
+        self.transcriber.setDialFrequency(frequency)

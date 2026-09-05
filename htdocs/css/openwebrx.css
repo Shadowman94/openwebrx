@@ -1161,6 +1161,20 @@ img.openwebrx-mirror-img
     font-size: 12px;
 }
 
+.openwebrx-p25-display {
+    flex: 0.7 0 0;
+    line-height: 1.2em;
+    font-size: 12px;
+}
+
+.openwebrx-meta-slot.group .openwebrx-p25-destination:not(:empty):before {
+    content: "Talkgroup: ";
+}
+
+.openwebrx-meta-slot.direct .openwebrx-p25-destination:not(:empty):before {
+    content: "Direct: ";
+}
+
 .openwebrx-maps-pin svg {
     width: 15px;
     height: 15px;
@@ -1592,6 +1606,25 @@ img.openwebrx-mirror-img
     background-image: url(../../aprs-symbols/aprs-symbols-24-2.png)
 }
 
+.openwebrx-bubble {
+    opacity: 0.0;
+    background-color: #575757;
+    color: white;
+    padding: 30px;
+    font-size: 20pt;
+    border-radius: 15px;
+    -moz-border-radius: 15px;
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    transition: opacity 0.5s ease;
+}
+
+.openwebrx-bubble.shown {
+    opacity: 0.7;
+}
+
 .openwebrx-dialog {
     background-color: #575757;
     padding: 10px;
@@ -1706,6 +1739,7 @@ img.openwebrx-mirror-img
 #openwebrx-panel-digimodes[data-mode="selcall"] #openwebrx-digimode-select-channel,
 #openwebrx-panel-digimodes[data-mode="zvei"]    #openwebrx-digimode-select-channel,
 #openwebrx-panel-digimodes[data-mode="eas"]     #openwebrx-digimode-select-channel,
+#openwebrx-panel-digimodes[data-mode="speech"]  #openwebrx-digimode-select-channel,
 #openwebrx-panel-digimodes[data-mode="cwskimmer"]   #openwebrx-digimode-select-channel,
 #openwebrx-panel-digimodes[data-mode="rttyskimmer"] #openwebrx-digimode-select-channel,
 #openwebrx-panel-digimodes[data-mode="lora-wan"]    #openwebrx-digimode-select-channel,

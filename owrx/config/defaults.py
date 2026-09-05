@@ -464,6 +464,7 @@ defaultConfig = PropertyLayer(
     mqtt_aprs=False,
     mqtt_ais=False,
     mqtt_sonde=False,
+    mqtt_meshtastic=False,
     wifi_enable_ap=False,
     wifi_name_ap="openwebrx",
     wifi_pass_ap="openwebrx",
@@ -482,5 +483,8 @@ defaultConfig = PropertyLayer(
     lorawan_bw="7",
     meshtastic_bw="8",
     meshcore_bw="6",
-    meshcom_bw="8"
+    meshcom_bw="8",
+    speech_url="",
+    speech_squelch=20,
+    speech_hang_time=5000
 ).readonly()
