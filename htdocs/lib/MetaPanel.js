@@ -561,6 +561,7 @@ function HdrMetaPanel(el) {
     MetaPanel.call(this, el);
     this.modes = ['HDR'];
     this.frequency = -1;
+    this.program = -1;
 
     // Create info panel
     var $container = $(
@@ -596,18 +597,24 @@ HdrMetaPanel.prototype = new MetaPanel();
 HdrMetaPanel.prototype.update = function(data) {
     if (!this.isSupported(data)) return;
 
+    // Clear logo image when frequency or HD program changes.
+    var frequencyChanged =
+        'frequency' in data && data.frequency != this.frequency;
+    var programChanged =
+        'program' in data && data.program != this.program;
+
+    if (frequencyChanged || programChanged) {
+        if ('frequency' in data) this.frequency = data.frequency;
+        if ('program' in data) this.program = data.program;
+        $('#hdr-logo').html('');
+    }
+
     // If there is an image, display it and do not parse further
     if ('image' in data && 'data' in data) {
         $('#hdr-logo').html(
             '<img src="data:image/png;base64,' + data.data + '">'
         );
         return;
-    }
-
-    // Clear logo image when frequency changes
-    if (data.frequency != this.frequency) {
-        this.frequency = data.frequency;
-        $('#hdr-logo').html('');
     }
 
     // Convert FCC ID to hexadecimal
@@ -924,6 +931,137 @@ DrmMetaPanel.prototype.setIndicator = function(name, value, text = null) {
     if (text != null) $el.text(text);
 };
 
+function TetraMetaPanel(el) {
+    MetaPanel.call(this, el);
+    this.clear();
+}
+
+TetraMetaPanel.prototype = new MetaPanel();
+
+TetraMetaPanel.prototype.isSupported = function(data) {
+    // TetraParser emits data.mode = 'TETRA'
+    return data.mode === 'TETRA';
+};
+
+TetraMetaPanel.prototype.row = function(name, value) {
+    return(
+        '<tr><td align="right">' + name +
+        '&nbsp;</td><td align="left">' + value +
+        '</td></tr>'
+    );
+};
+
+TetraMetaPanel.prototype.update = function(data) {
+    if (!this.isSupported(data)) return;
+
+    var slot = this.el.find('.openwebrx-meta-slot');
+
+    slot.addClass('active');
+
+    var html = '<table class="openwebrx-tetra-display" columns="2">';
+
+    if (data.ft)
+        html += this.row('TS:', data.ft);
+    if (data.network)
+        html += this.row('Net:', data.network);
+    if (data.mcc)
+        html += this.row('CCode:', data.mcc + ',' + data.mnc + ',' + data.bcc);
+    html += this.row('','');
+    html += this.row('','');
+    if (data.tx_mhz)
+        html += this.row('TX:', data.tx_mhz.toFixed(3) + 'Mhz');
+    if (data.rx_mhz)
+        html += this.row('RX:', data.rx_mhz.toFixed(3) + 'Mhz');
+    html += this.row('','');
+    html += this.row('','');
+    if (data.rfdb)
+        html += this.row('Signal:', data.rfdb.toFixed(1) + 'dB');
+    if (data.offset)
+        html += this.row('Offset:', data.offset + 'Hz');
+
+    // Subscriber identities
+    var ssi = [];
+    if (data.ssi && data.ssi.length)   ssi = ssi.concat(data.ssi);
+    if (data.ussi && data.ussi.length) ssi = ssi.concat(data.ussi);
+    if (ssi.length)
+        html += this.row('SSI:', ssi.join(', '));
+
+    html += '</table>';
+    slot.html(html);
+};
+
+TetraMetaPanel.prototype.clear = function() {
+    MetaPanel.prototype.clear.call(this);
+    this.el.find('.openwebrx-meta-slot').empty();
+};
+
+function P25MetaPanel(el) {
+    MetaPanel.call(this, el);
+    this.clear();
+}
+
+P25MetaPanel.prototype = new MetaPanel();
+
+P25MetaPanel.prototype.isSupported = function(data) {
+    return data.protocol === 'P25';
+};
+
+P25MetaPanel.prototype.setSource = function(source) {
+    if (this.source === source) return;
+    this.source = source;
+    this.el.find('.openwebrx-p25-source').text(source || '');
+};
+
+P25MetaPanel.prototype.setDestination = function(destination) {
+    if (this.destination === destination) return;
+    this.destination = destination;
+    this.el.find('.openwebrx-p25-destination').text(destination || '');
+};
+
+P25MetaPanel.prototype.setEncryption = function(encryption) {
+    if (this.encryption === encryption) return;
+    this.encryption = encryption;
+    this.el.find('.openwebrx-p25-encryption').text(encryption || '');
+};
+
+P25MetaPanel.prototype.setMode = function(mode) {
+    if (this.mode === mode) return;
+    this.mode = mode;
+    var classes = ['group', 'direct'].filter(function(c){
+        return c !== mode;
+    });
+    this.el.find('.openwebrx-meta-slot').removeClass(classes.join(' ')).addClass(mode);
+}
+
+P25MetaPanel.prototype.update = function(data) {
+    if (!this.isSupported(data)) return;
+
+    if (data.sync === 'voice') {
+        this.el.find('.openwebrx-meta-slot').addClass('active');
+
+        this.setSource(data.source);
+        this.setDestination(data.destination);
+        this.setMode(['group', 'direct'].includes(data.type) ? data.type : undefined);
+
+        if ((data.encryption === 'encrypted') && data.algid) {
+            var encryption = data.algorithm || ('ALGID=0x' + parseInt(data.algid).toString(16).toUpperCase());
+            this.setEncryption(encryption);
+        } else {
+            this.setEncryption();
+        }
+    } else {
+        this.clear();
+    }
+};
+
+P25MetaPanel.prototype.clear = function() {
+    MetaPanel.prototype.clear.call(this);
+    this.setMode();
+    this.setSource();
+    this.setDestination();
+    this.setEncryption();
+};
+
 MetaPanel.types = {
     dmr: DmrMetaPanel,
     ysf: YsfMetaPanel,
@@ -934,7 +1072,9 @@ MetaPanel.types = {
     bcfm: WfmMetaPanel,
     dab: DabMetaPanel,
     hdr: HdrMetaPanel,
-    drm: DrmMetaPanel
+    drm: DrmMetaPanel,
+    p25: P25MetaPanel,
+    tetra: TetraMetaPanel
 };
 
 $.fn.metaPanel = function() {

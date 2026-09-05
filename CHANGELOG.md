@@ -1,3 +1,96 @@
+**1.2.123**
+- Added speech to text transcription using Whisper.
+- Added background service for speech to text.
+- Added reporting of transcribed speech via MQTT.
+- Added per-program HDRadio image handling [Taxom].
+- Added SX1255 Soapy driver [Circu1tI0N3rd].
+- Minor fixes to DireWolf APRS decoder [jeepmanct].
+- Migrated from pkg_resources [rhjdvsgsgks].
+- Improved SNR squelch implementation.
+- SnrSquelch now uses decibels for threshold.
+
+**1.2.122**
+- Added sharing Meshtastic data over MQTT.
+- Disabled Meshtastic parsers not available on Trixie.
+- Switched to the PLL-based AFC module for SAM.
+- Switched to Hann window everywhere.
+- Fixed number of digits in bookmark editor.
+- Fixed tuning with 8.33kHz airband step.
+- Fixed decoding of Scottie SSTV modes.
+- Improved SNR implementation.
+
+**1.2.121**
+- Now validating PskReporter spots.
+- More Yaesu/Kenwood APRS IDs [Geoffrey Phillips].
+- [NR] Added Hamming window to the input.
+- [NR] Added 50% output buffer overlap.
+- [NR] Fixed sound pop when NR is engaged.
+- [NR] Fixed noise floor tracking.
+- [NR] Fixed NR threshold to use proper dB.
+- [AGC] Added initial peak computation.
+- [AGC] Fixed complex magnitude clamping.
+- [AGC] Fixed setHangTime() argument type.
+- [CW] Fixed noise floor tracking.
+- [CW] Fixed CW codes table.
+- [CW] Fixed WPM computation.
+- [FAX] Fixed phase tracking.
+- [FAX] Fixed zero magnitude handling.
+- [FAX] Fixed color computation.
+- [SSTV] Fixed buffer deletion.
+- [SSTV] Fixed YUV to RGB conversion.
+- [SSTV] Fixed intra-scanline sync.
+- [SSTV] Fixed PD scanline sequence.
+- [DSC] Fixed coordinate parsing.
+- [DSC] Fixed frequency parsing.
+- [DSC] Fixed phone number parsing.
+
+**1.2.120**
+- Added bookmark info bubbles when clicked.
+- Muted encrypted P25 audio.
+- Fixed reporting third party APRS packets.
+- Disabled reporting non-reportable APRS packets.
+- Fixed typo in APRS "adressee" name.
+- Stripped whitespace from APRS addressee.
+
+**1.2.119**
+- Added unencrypted P25 support (please test).
+- Added total spot metrics to CW/RTTY skimmers.
+- Switched to forked Digiham libraries with P25.
+- Removed online font dependency from Settings.
+- Removed discontinued CHU beacon.
+
+**1.2.118**
+- Added native APRS IGate reporter module.
+- Added option for legacy Direwold IGate.
+- Added bookmark search (right button on icon).
+- Added [Y] shortcut to search bookmarks.
+- Handled case when feature binary not executable.
+- Multiple APRS decoders can report to APRS-IS.
+
+**1.2.117**
+- Added unencrypted Tetra support [Yiannis Sam].
+- Added support for ELAD FDM-S2 [DisagioDigitale].
+- Added ARINC622 payload parsing inside ACARS.
+- Added CPDLC payload parsing inside ACARS.
+- Added ADS-C payload parsing inside ACARS.
+- Added parsing ACARS legacy position reports.
+- Added ACARS parsing inside VDL2 and HFDL.
+- Added airplane temperature, wind, route display.
+- Added options to drop ACARS and VDL2 acks.
+- Added options for LoRa decoder bandwidths.
+- Made Meshtastic map objects use regular TTL.
+- Fixed flickering horizontal waterfall lines.
+- Fixed web agent threads hanging on exit.
+
+**1.2.116**
+- Added LoRa Meshtastic parser [Stanislav Lechev].
+- Added LoRa APRS parser [Stefan DC4HF].
+- Added Sondehub reporter for RS41 telemetry [Hai Tran].
+- Added paho-mqtt 2.0 compatibility [Marc Fontaine].
+- Added per-profile PPM correction option.
+- Fixed exception when stopping AdsbParser.
+- Fixed exception when stopping services.
+
 **1.2.115**
 - Added [T] shortcut to enter frequency [Rene Jaun].
 - Added [P] shortcut to select profile [Rene Jaun].

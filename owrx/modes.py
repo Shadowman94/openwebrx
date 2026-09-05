@@ -151,8 +151,10 @@ class Modes(object):
         ),
         AnalogMode("nxdn", "NXDN", bandpass=Bandpass(-3250, 3250), requirements=["digital_voice_digiham"], squelch=False),
         AnalogMode("ysf", "YSF", bandpass=Bandpass(-6250, 6250), requirements=["digital_voice_digiham"], squelch=False),
+        AnalogMode("p25", "P25", bandpass=Bandpass(-6250, 6250), requirements=["digital_voice_digiham"], squelch=False),
         AnalogMode("m17", "M17", bandpass=Bandpass(-6250, 6250), requirements=["digital_voice_m17"], squelch=False),
         AnalogMode("freedv", "FreeDV", bandpass=Bandpass(300, 3000), requirements=["digital_voice_freedv"], squelch=False),
+        AnalogMode("tetra", "TETRA", bandpass=Bandpass(-12500, 12500), requirements=["tetra"], squelch=False),
         AnalogMode("radel", "RADEL", bandpass=Bandpass(-3000, -300), requirements=["digital_voice_rade"], squelch=False),
         AnalogMode("radeu", "RADEU", bandpass=Bandpass(300, 3000), requirements=["digital_voice_rade"], squelch=False),
         AnalogMode("drm", "DRM", bandpass=Bandpass(-5000, 5000), requirements=["drm"], squelch=False),
@@ -339,6 +341,14 @@ class Modes(object):
             squelch=False,
             secondaryFft=False
         ),
+        DigitalMode(
+            "speech",
+            "Speech Transcriber",
+            underlying=["am", "sam", "nfm", "wfm", "lsb", "usb"],
+            requirements=["speech"],
+            service=True,
+            squelch=True
+        ),
         # LoRa modes
         DigitalMode(
             "lora-wan",
@@ -376,7 +386,7 @@ class Modes(object):
             underlying=["empty"],
             bandpass=None,
             ifRate=1000000,
-            requirements=["lora"],
+            requirements=["meshtastic"],
             service=True,
             squelch=True
         ),

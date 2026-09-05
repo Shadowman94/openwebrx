@@ -1,6 +1,6 @@
 from owrx.controllers.settings import SettingsFormController, SettingsBreadcrumb
 from owrx.form.section import Section
-from owrx.form.input import CheckboxInput, NumberInput, DropdownInput, Js8ProfileCheckboxInput, MultiCheckboxInput, Option, TextInput, AgcInput
+from owrx.form.input import CheckboxInput, NumberInput, DropdownInput, Js8ProfileCheckboxInput, MultiCheckboxInput, Option, TextInput, AgcInput, LoraBandwidthInput
 from owrx.form.input.dab import DabOutputRateValues
 from owrx.form.input.wfm import WfmTauValues
 from owrx.form.input.wsjt import Q65ModeMatrix, WsjtDecodingDepthsInput
@@ -103,20 +103,42 @@ class DecodingSettingsController(SettingsFormController):
                 NumberInput(
                     "rec_squelch",
                     "Recording squelch level",
-                    validator=RangeValidator(5, 70),
+                    validator=RangeValidator(0, 70),
                     infotext="Signal-to-noise ratio (SNR) that triggers recording",
                     append="dB",
                 ),
                 NumberInput(
                     "rec_hang_time",
                     "Recording squelch hang time",
-                    validator=RangeValidator(0, 5000),
+                    validator=RangeValidator(0, 15000),
                     infotext="Time recording keeps going after signal disappears",
                     append="ms",
                 ),
                 CheckboxInput(
                     "rec_produce_silence",
                     "Record silence when there is no signal",
+                ),
+            ),
+            Section(
+                "Speech to text transcription",
+                TextInput(
+                    "speech_url",
+                    "Whisper transcription server",
+                    infotext="Server URL used to send audio for transcription into text",
+                ),
+                NumberInput(
+                    "speech_squelch",
+                    "Transcription squelch level",
+                    validator=RangeValidator(0, 70),
+                    infotext="Signal-to-noise ratio (SNR) that triggers transcription",
+                    append="dB",
+                ),
+                NumberInput(
+                    "speech_hang_time",
+                    "Transcription squelch hang time",
+                    validator=RangeValidator(0, 15000),
+                    infotext="Time transcription keeps going after signal disappears",
+                    append="ms",
                 ),
             ),
             Section(
@@ -128,22 +150,49 @@ class DecodingSettingsController(SettingsFormController):
                     append="s",
                 ),
                 NumberInput(
-                    "vdl2_ttl",
-                    "VDL2 reports expiration time",
-                    validator=RangeValidator(30, 100000),
-                    append="s",
-                ),
-                NumberInput(
                     "hfdl_ttl",
                     "HFDL reports expiration time",
                     validator=RangeValidator(30, 100000),
                     append="s",
                 ),
                 NumberInput(
+                    "vdl2_ttl",
+                    "VDL2 reports expiration time",
+                    validator=RangeValidator(30, 100000),
+                    append="s",
+                ),
+                CheckboxInput(
+                    "vdl2_ignore_acks",
+                    "Filter out VDL2 acknowledgement messages",
+                ),
+                NumberInput(
                     "acars_ttl",
                     "ACARS reports expiration time",
                     validator=RangeValidator(30, 100000),
                     append="s",
+                ),
+                CheckboxInput(
+                    "acars_ignore_acks",
+                    "Filter out ACARS acknowledgement messages",
+                ),
+            ),
+            Section(
+                "LoRa messages",
+                LoraBandwidthInput(
+                    "lorawan_bw",
+                    "LoRa WAN bandwidth",
+                ),
+                LoraBandwidthInput(
+                    "meshtastic_bw",
+                    "Meshtastic bandwidth",
+                ),
+                LoraBandwidthInput(
+                    "meshcore_bw",
+                    "MeshCore bandwidth",
+                ),
+                LoraBandwidthInput(
+                    "meshcom_bw",
+                    "MeshCom bandwidth",
                 ),
             ),
             Section(
