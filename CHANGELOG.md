@@ -1,3 +1,18 @@
+**1.2.125**
+- Added optional ability to press RigControl PTT.
+- Added sample Solar Weather plugin.
+- Added sample magic key entry plugin.
+- Added sample PTT button plugin.
+- Made mouse pointer frequency show up in single Hz.
+- Made Plugins.addSection() return reference to content.
+- Narrowed SNR window to 1/256 of total bandwidth.
+
+**1.2.124**
+- Added plugin APIs for buttons, windows, sections.
+- Added optional pointer frequency display.
+- Added Soapy source for IQ files and streams [f-and].
+- Removed Direwolf "fix" since some users complained.
+
 **1.2.123**
 - Added speech to text transcription using Whisper.
 - Added background service for speech to text.
